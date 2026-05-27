@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { planetMapRegistry as PlanetMapRegistry } from '../../planetMapRegistry';
-import { planetRenderRegistry as PlanetRenderRegistry } from '../../engine/planetRenderRegistry';
-import type { CartoonPlanetUiOptions, GlobeEnginePort, Marker } from '../../types';
 import { GlobeController } from '../../globeController';
 
 export function AltitudeCoordinatesHUD({ hud }) {
@@ -74,8 +71,8 @@ export function StartLevelControl({ startView, setInitialView }) {
   );
 }
 
-export function PlanetMapControl({ planetMap, selectPlanetMap }) {
-  const maps = PlanetMapRegistry ? PlanetMapRegistry.getAll() : [];
+export function PlanetMapControl({ planetMap, selectPlanetMap, controller }: { planetMap: string; selectPlanetMap: (name: string) => void; controller: GlobeController }) {
+  const maps = controller.getMaps();
   if (maps.length <= 1) return null;
   return (
     <div className="panel">
@@ -83,13 +80,13 @@ export function PlanetMapControl({ planetMap, selectPlanetMap }) {
       <div className="segmented" role="group" aria-label="Planet map">
         {maps.map(map => (
           <button
-            key={map.id}
+            key={map.name}
             type="button"
-            className={planetMap === map.id ? 'is-active' : ''}
-            aria-pressed={planetMap === map.id}
-            onClick={() => selectPlanetMap(map.id)}
+            className={planetMap === map.name ? 'is-active' : ''}
+            aria-pressed={planetMap === map.name}
+            onClick={() => selectPlanetMap(map.name)}
           >
-            {map.label}
+            {map.name}
           </button>
         ))}
       </div>
@@ -97,20 +94,21 @@ export function PlanetMapControl({ planetMap, selectPlanetMap }) {
   );
 }
 
-export function RenderModeControl({ renderMode, selectRenderMode }) {
+export function RenderModeControl({ renderMode, selectRenderMode, controller }: { renderMode: string; selectRenderMode: (name: string) => void; controller: GlobeController }) {
+  const modes = controller.getRenderModes();
   return (
     <div className="panel">
       <div className="panel-title">Render mode</div>
       <div className="segmented" role="group" aria-label="Render mode">
-        {PlanetRenderRegistry.getAll().map(mode => (
+        {modes.map(mode => (
           <button
-            key={mode.id}
+            key={mode.name}
             type="button"
-            className={renderMode === mode.id ? 'is-active' : ''}
-            aria-pressed={renderMode === mode.id}
-            onClick={() => selectRenderMode(mode.id)}
+            className={renderMode === mode.name ? 'is-active' : ''}
+            aria-pressed={renderMode === mode.name}
+            onClick={() => selectRenderMode(mode.name)}
           >
-            {mode.label}
+            {mode.name}
           </button>
         ))}
       </div>

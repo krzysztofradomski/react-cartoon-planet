@@ -70,10 +70,10 @@ export function GlobeUi({
           <StartLevelControl startView={startView} setInitialView={setInitialView} />
         )}
         {ui.planetMapControl && (
-          <PlanetMapControl planetMap={planetMap} selectPlanetMap={selectPlanetMap} />
+          <PlanetMapControl planetMap={planetMap} selectPlanetMap={selectPlanetMap} controller={controller} />
         )}
         {ui.renderModeControl && (
-          <RenderModeControl renderMode={renderMode} selectRenderMode={selectRenderMode} />
+          <RenderModeControl renderMode={renderMode} selectRenderMode={selectRenderMode} controller={controller} />
         )}
         {ui.quickJumpControl && <QuickJumpControl flyTo={flyTo} />}
         {ui.markerManagerControl && (

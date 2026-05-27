@@ -10,7 +10,6 @@ export default defineConfig({
   ],
   optimizeDeps: {
     include: ['three', 'earcut'],
-    // Keep import.meta.url asset resolution relative to dist/index.js
     exclude: ['react-cartoon-planet'],
   },
 })

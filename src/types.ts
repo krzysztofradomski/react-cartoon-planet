@@ -1,7 +1,37 @@
-export type PlanetMapId = 'earth' | 'moon' | string;
-export type RenderModeId = 'surface' | 'dots' | 'hybrid' | 'cyberpunk' | string;
+import type { Group } from 'three';
+
 export type StartViewId = 'globe' | 'ground';
 export type MarkerShape = 'orb' | 'cube' | 'bar';
+
+/** GeoJSON or other map source referenced by local or remote URL. */
+export interface PlanetMapDefinition {
+  name: string;
+  url: string;
+  /** Pre-parsed continents; skips fetch when provided. */
+  continents?: Continent[];
+  oceanColor?: string;
+  landColor?: string;
+  atmosphereColor?: string;
+  atmosphereStrength?: number;
+}
+
+/** Passed to custom renderFunction implementations. */
+export interface GlobeRenderConfig {
+  continents: Continent[];
+  map: PlanetMapOptions & { name: string };
+  outlinePx: number;
+  altitude: number;
+  time: number;
+}
+
+/** Fully customizable globe surface renderer. */
+export interface GlobeRenderModeDefinition {
+  name: string;
+  renderFunction: (config: GlobeRenderConfig) => Group;
+  getAtmosphereColor?: () => import('three').Color;
+  getMarkerMode?: () => string;
+  animate?: (group: Group, context: { alt: number; time: number }) => void;
+}
 
 export interface Marker {
   id: string;
@@ -37,8 +67,8 @@ export interface MarkerLabel {
 }
 
 export interface GlobeState {
-  renderMode: RenderModeId;
-  planetMap: PlanetMapId;
+  renderMode: string;
+  planetMap: string;
   startView: StartViewId;
   markers: Marker[];
   placingMode: boolean;
@@ -63,8 +93,8 @@ export interface CartoonPlanetUiOptions {
 }
 
 export interface CartoonPlanetInitialState {
-  map?: PlanetMapId;
-  renderMode?: RenderModeId;
+  map?: PlanetMapDefinition;
+  renderMode?: GlobeRenderModeDefinition;
   startView?: StartViewId;
   markers?: Marker[];
   linksEnabled?: boolean;
@@ -78,7 +108,7 @@ export interface GlobeEnginePort {
   isPlacingMode?: boolean;
   onGlobeClick?: ((lng: number, lat: number) => void) | null;
   controls?: GlobeControlsLike;
-  setRenderMode?: (mode: RenderModeId) => void;
+  setRenderMode?: (modeName: string) => void;
   rebuildPlanetMap?: () => void;
   setMarkers?: (markers: Marker[]) => void;
 }
@@ -89,8 +119,10 @@ export type GlobeRuntimeRef = GlobeEnginePort;
 export interface CartoonPlanetController {
   getState(): GlobeState;
   subscribe(listener: (state: GlobeState) => void): () => void;
-  setRenderMode(mode: RenderModeId): void;
-  setPlanetMap(mapId: PlanetMapId): void;
+  getMaps(): PlanetMapDefinition[];
+  getRenderModes(): GlobeRenderModeDefinition[];
+  setRenderMode(mode: GlobeRenderModeDefinition | string): void;
+  setPlanetMap(map: PlanetMapDefinition | string): void;
   setStartView(view: StartViewId): void;
   setMarkers(markers: Marker[]): void;
   addMarker(
@@ -117,6 +149,10 @@ export interface CartoonPlanetProps {
   className?: string;
   style?: React.CSSProperties;
   title?: string;
+  /** Available planet maps (defaults to built-in Earth + Moon). */
+  maps?: PlanetMapDefinition[];
+  /** Available render modes (defaults to built-in Solid/Dots/Hybrid/Cyber). */
+  renderModes?: GlobeRenderModeDefinition[];
   ui?: Partial<CartoonPlanetUiOptions>;
   initialState?: CartoonPlanetInitialState;
   onReady?: (controller: CartoonPlanetController) => void;

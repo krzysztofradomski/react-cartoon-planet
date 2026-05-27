@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
 import * as THREE from 'three';
-import { planetMapRegistry as PlanetMapRegistry } from '../../planetMapRegistry';
-import { planetRenderRegistry as PlanetRenderRegistry } from '../planetRenderRegistry';
 import { GlobeControls } from '../globeControls';
 import { buildPlanetSurface } from '../builders/planetSurface';
 import { buildStarfield } from '../builders/starfield';
 import { buildMarkers, orientToSurface, projectMarkerLabels } from '../builders/markers';
 import { outlineWidthForAltitude, vec3ToLngLat, hash } from '../geo/math';
 import { EARTH_RADIUS_M, START_VIEWS, GlobeController } from '../../globeController';
-import type { RenderModeId, StartViewId } from '../../types';
+import type { StartViewId } from '../../types';
+import { SURFACE_RENDER_MODE } from '../../presets/builtinRenderModes';
 import { formatAltitude, formatScaleBar } from '../../components/globeUi/hudFormat';
 import { bindEnginePort, clearEnginePort, type GlobeEnginePortRef } from '../globeEnginePort';
 
@@ -78,40 +77,48 @@ export function attachGlobeScene({
   continentsGroup.userData.kind = 'continents';
   planet.add(continentsGroup);
 
+  const { mapCatalog, renderCatalog } = controller;
+
   function getMapOptions() {
-    return PlanetMapRegistry ? PlanetMapRegistry.getOptions() : {};
+    return mapCatalog.getOptions();
   }
 
-  function currentRenderMode(): RenderModeId {
+  function currentRenderModeName(): string {
     return surfaceGroup.userData.mode || controller.getState().renderMode;
   }
 
-  function rebuildMarkers(nextMarkers = controller.getState().markers, mode = currentRenderMode()) {
+  function rebuildMarkers(nextMarkers = controller.getState().markers, modeName = currentRenderModeName()) {
     while (markerRoot.children.length) {
       const child = markerRoot.children.pop();
       disposeObject3D(child);
     }
-    const markerGroup = buildMarkers(nextMarkers, mode, controller.getState().linksEnabled);
+    const modeObj = renderCatalog.get(modeName);
+    const markerMode = modeObj?.getMarkerMode ? modeObj.getMarkerMode() : 'surface';
+    const markerGroup = buildMarkers(nextMarkers, markerMode, controller.getState().linksEnabled);
     markerRoot.add(markerGroup);
     markerRoot.userData.markerGroup = markerGroup;
   }
 
   function rebuildSurface(
     outlinePx = surfaceGroup.userData.outlinePx || 12,
-    mode: RenderModeId = currentRenderMode()
+    modeName: string = currentRenderModeName()
   ) {
     while (surfaceGroup.children.length) {
       const child = surfaceGroup.children.pop();
       disposeObject3D(child);
     }
     surfaceGroup.userData.outlinePx = outlinePx;
-    surfaceGroup.userData.mode = mode;
-    const continents = PlanetMapRegistry ? PlanetMapRegistry.getContinents() : [];
-    surfaceGroup.add(buildPlanetSurface(continents, outlinePx, mode, getMapOptions()));
+    surfaceGroup.userData.mode = modeName;
+    const continents = mapCatalog.getContinents();
+    const mapOpts = getMapOptions();
+    surfaceGroup.add(
+      buildPlanetSurface(renderCatalog, modeName, continents, outlinePx, {
+        ...mapOpts,
+        name: mapCatalog.getActiveName(),
+      })
+    );
 
-    const modeObj = PlanetRenderRegistry.get(mode);
-    const markerMode = modeObj?.getMarkerMode ? modeObj.getMarkerMode() : 'surface';
-    rebuildMarkers(controller.getState().markers, markerMode);
+    rebuildMarkers(controller.getState().markers, modeName);
   }
 
   function rebuildContinents() {
@@ -125,7 +132,7 @@ export function attachGlobeScene({
   rebuildContinents();
   rebuildMarkers();
 
-  const loadMap = () => PlanetMapRegistry.loadActive();
+  const loadMap = () => mapCatalog.loadActive();
   scene.add(planet);
 
   const atmoGeo = new THREE.SphereGeometry(1.06, 64, 48);
@@ -175,7 +182,7 @@ export function attachGlobeScene({
     rebuildContinents();
     applyMapAtmosphere();
   }
-  const unsubscribeMap = PlanetMapRegistry.onChange(onPlanetMapChanged);
+  const unsubscribeMap = mapCatalog.onChange(onPlanetMapChanged);
 
   const stars = buildStarfield();
   scene.add(stars);
@@ -254,7 +261,7 @@ export function attachGlobeScene({
       controls.tick();
       const alt = (controls.radius - 1) * EARTH_RADIUS_M;
       const nextOutlinePx = outlineWidthForAltitude(alt);
-      if (surfaceGroup.userData.mode === 'surface' && nextOutlinePx !== surfaceGroup.userData.outlinePx) {
+      if (surfaceGroup.userData.mode === SURFACE_RENDER_MODE.name && nextOutlinePx !== surfaceGroup.userData.outlinePx) {
         rebuildSurface(nextOutlinePx, surfaceGroup.userData.mode);
       }
 
@@ -268,14 +275,14 @@ export function attachGlobeScene({
       stars.material.transparent = true;
 
       const currentMode = surfaceGroup.userData.mode;
-      const modeObj = PlanetRenderRegistry.get(currentMode);
+      const modeObj = renderCatalog.get(currentMode);
       const modeAtmo = modeObj?.getAtmosphereColor
         ? modeObj.getAtmosphereColor()
         : new THREE.Color(0.45, 0.7, 1.0);
       const mapAtmo = new THREE.Color(getMapOptions().atmosphereColor || '#73b3ff');
       atmoMat.uniforms.uColor.value.copy(modeAtmo).lerp(mapAtmo, 0.35);
 
-      PlanetRenderRegistry.animate(currentMode, surfaceGroup, { alt, time: performance.now() });
+      renderCatalog.animate(currentMode, surfaceGroup, { alt, time: performance.now() });
 
       markerRoot.traverse((child) => {
         if (child.userData) {

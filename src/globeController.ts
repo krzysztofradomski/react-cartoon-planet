@@ -1,19 +1,20 @@
 import type { RefObject } from 'react';
-import { planetMapRegistry } from './planetMapRegistry';
-import { planetRenderRegistry } from './engine/planetRenderRegistry';
+import { MapCatalog } from './catalog/mapCatalog';
+import { RenderCatalog } from './catalog/renderCatalog';
 import type {
   CartoonPlanetInitialState,
   GlobeEnginePort,
+  GlobeRenderModeDefinition,
   GlobeState,
   Marker,
   MarkerShape,
-  PlanetMapId,
-  RenderModeId,
+  PlanetMapDefinition,
   StartViewId,
 } from './types';
 import { DEFAULT_MARKERS } from './types';
 
 const PLANET_MAP_KEY = 'cartoonPlanetMap';
+const RENDER_MODE_KEY = 'cartoonPlanetRenderMode';
 
 export const START_VIEWS = {
   globe: { lng: 0, lat: 20, alt_m: 14_000_000 },
@@ -22,14 +23,20 @@ export const START_VIEWS = {
 
 export const EARTH_RADIUS_M = 6_371_000;
 
+export type GlobeControllerOptions = {
+  initialState?: CartoonPlanetInitialState;
+  maps: PlanetMapDefinition[];
+  renderModes: GlobeRenderModeDefinition[];
+};
+
 class GlobeStateStore {
   state: GlobeState;
   private listeners = new Set<(state: GlobeState) => void>();
 
   constructor(initialState: Partial<GlobeState> = {}) {
     this.state = {
-      renderMode: 'surface',
-      planetMap: 'earth',
+      renderMode: '',
+      planetMap: '',
       startView: 'globe',
       markers: DEFAULT_MARKERS,
       placingMode: false,
@@ -70,10 +77,18 @@ class GlobeStateStore {
 }
 
 export class GlobeController {
+  readonly mapCatalog: MapCatalog;
+  readonly renderCatalog: RenderCatalog;
+
   constructor(
     private store: GlobeStateStore,
-    private enginePortRef: RefObject<GlobeEnginePort>
-  ) {}
+    private enginePortRef: RefObject<GlobeEnginePort>,
+    mapCatalog: MapCatalog,
+    renderCatalog: RenderCatalog
+  ) {
+    this.mapCatalog = mapCatalog;
+    this.renderCatalog = renderCatalog;
+  }
 
   getState() {
     return this.store.getState();
@@ -83,31 +98,44 @@ export class GlobeController {
     return this.store.subscribe(listener);
   }
 
-  setRenderMode(mode: RenderModeId) {
-    if (!planetRenderRegistry.get(mode)) return;
-    this.store.setState({ renderMode: mode });
-    try {
-      localStorage.setItem('cartoonPlanetRenderMode', mode);
-    } catch {
-      /* ignore */
-    }
-    if (this.enginePortRef.current?.setRenderMode) {
-      this.enginePortRef.current.setRenderMode(mode);
-    }
+  getMaps() {
+    return this.mapCatalog.getAll();
   }
 
-  setPlanetMap(mapId: PlanetMapId) {
-    if (!planetMapRegistry.get(mapId)) return;
-    this.store.setState({ planetMap: mapId });
+  getRenderModes() {
+    return this.renderCatalog.getAll();
+  }
+
+  setRenderMode(mode: GlobeRenderModeDefinition | string) {
+    const name = typeof mode === 'string' ? mode : mode.name;
+    if (!this.renderCatalog.get(name)) return;
+    if (typeof mode !== 'string') {
+      this.renderCatalog.register(mode);
+    }
+    this.renderCatalog.setActiveName(name);
+    this.store.setState({ renderMode: name });
     try {
-      localStorage.setItem(PLANET_MAP_KEY, mapId);
+      localStorage.setItem(RENDER_MODE_KEY, name);
     } catch {
       /* ignore */
     }
-    void planetMapRegistry.setActive(mapId).then(() => {
-      if (this.enginePortRef.current?.rebuildPlanetMap) {
-        this.enginePortRef.current.rebuildPlanetMap();
-      }
+    this.enginePortRef.current?.setRenderMode?.(name);
+  }
+
+  setPlanetMap(map: PlanetMapDefinition | string) {
+    const name = typeof map === 'string' ? map : map.name;
+    if (typeof map !== 'string') {
+      this.mapCatalog.register(map);
+    }
+    if (!this.mapCatalog.get(name)) return;
+    this.store.setState({ planetMap: name });
+    try {
+      localStorage.setItem(PLANET_MAP_KEY, name);
+    } catch {
+      /* ignore */
+    }
+    void this.mapCatalog.setActive(name).then(() => {
+      this.enginePortRef.current?.rebuildPlanetMap?.();
     });
   }
 
@@ -127,9 +155,7 @@ export class GlobeController {
   setMarkers(list: Marker[]) {
     const markers = Array.isArray(list) ? list : [];
     this.store.setState({ markers });
-    if (this.enginePortRef.current?.setMarkers) {
-      this.enginePortRef.current.setMarkers(markers);
-    }
+    this.enginePortRef.current?.setMarkers?.(markers);
   }
 
   addMarker(
@@ -146,7 +172,7 @@ export class GlobeController {
   ): Marker {
     const newMarker: Marker = {
       id: 'custom_' + Date.now(),
-      label: label || `Marker at ${lat.toFixed(1)}°, ${lng.toFixed(1)}°`,
+      label: label || `Marker at ${lat.toFixed(1)}, ${lng.toFixed(1)}°`,
       lng: Number(lng),
       lat: Number(lat),
       shape,
@@ -167,9 +193,7 @@ export class GlobeController {
 
   setLinksEnabled(enabled: boolean) {
     this.store.setState({ linksEnabled: !!enabled });
-    if (this.enginePortRef.current?.setMarkers) {
-      this.enginePortRef.current.setMarkers(this.store.getState().markers);
-    }
+    this.enginePortRef.current?.setMarkers?.(this.store.getState().markers);
   }
 
   startPlacing() {
@@ -182,9 +206,7 @@ export class GlobeController {
 
   flyTo(lng: number, lat: number, alt_m: number) {
     const r = 1 + alt_m / EARTH_RADIUS_M;
-    if (this.enginePortRef.current?.controls) {
-      this.enginePortRef.current.controls.flyTo(lng, lat, r, 1800);
-    }
+    this.enginePortRef.current?.controls?.flyTo(lng, lat, r, 1800);
   }
 
   flyToMarker(id: string) {
@@ -207,27 +229,52 @@ export class GlobeController {
   }
 }
 
+function mergeUniqueMaps(maps: PlanetMapDefinition[], extra?: PlanetMapDefinition): PlanetMapDefinition[] {
+  const list = [...maps];
+  if (extra && !list.some((m) => m.name === extra.name)) {
+    list.push(extra);
+  }
+  return list;
+}
+
+function mergeUniqueRenderModes(
+  modes: GlobeRenderModeDefinition[],
+  extra?: GlobeRenderModeDefinition
+): GlobeRenderModeDefinition[] {
+  const list = [...modes];
+  if (extra && !list.some((m) => m.name === extra.name)) {
+    list.push(extra);
+  }
+  return list;
+}
+
 export function createGlobeController(
   enginePortRef: RefObject<GlobeEnginePort>,
-  initialState?: CartoonPlanetInitialState
+  options: GlobeControllerOptions
 ): GlobeController {
-  const renderMode = (() => {
+  const { initialState, maps, renderModes } = options;
+
+  const resolvedMaps = mergeUniqueMaps(maps, initialState?.map);
+  const resolvedRenderModes = mergeUniqueRenderModes(renderModes, initialState?.renderMode);
+
+  const defaultMapName = (() => {
     try {
-      const stored = localStorage.getItem('cartoonPlanetRenderMode');
-      return stored && planetRenderRegistry.get(stored) ? stored : 'surface';
+      const stored = localStorage.getItem(PLANET_MAP_KEY);
+      if (stored && resolvedMaps.some((m) => m.name === stored)) return stored;
     } catch {
-      return 'surface';
+      /* ignore */
     }
+    return initialState?.map?.name || resolvedMaps[0]?.name || '';
   })();
 
-  const planetMap = (() => {
+  const defaultRenderModeName = (() => {
     try {
-      const fromProp = initialState?.map ?? null;
-      const stored = localStorage.getItem(PLANET_MAP_KEY) || fromProp;
-      return stored && planetMapRegistry.get(stored) ? stored : planetMapRegistry.getActiveId() || 'earth';
+      const stored = localStorage.getItem(RENDER_MODE_KEY);
+      if (stored && resolvedRenderModes.some((m) => m.name === stored)) return stored;
     } catch {
-      return 'earth';
+      /* ignore */
     }
+    return initialState?.renderMode?.name || resolvedRenderModes[0]?.name || '';
   })();
 
   const startView = (() => {
@@ -239,19 +286,16 @@ export function createGlobeController(
     }
   })();
 
-  if (initialState?.map && planetMapRegistry.get(initialState.map)) {
-    planetMapRegistry.setActiveId(initialState.map);
-  } else if (planetMapRegistry.get(planetMap)) {
-    planetMapRegistry.setActiveId(planetMap);
-  }
+  const mapCatalog = new MapCatalog(resolvedMaps, defaultMapName);
+  const renderCatalog = new RenderCatalog(resolvedRenderModes, defaultRenderModeName);
 
   const store = new GlobeStateStore({
-    renderMode: initialState?.renderMode || renderMode,
-    planetMap: initialState?.map || planetMap,
-    startView: initialState?.startView || startView,
+    renderMode: defaultRenderModeName,
+    planetMap: defaultMapName,
+    startView,
     markers: initialState?.markers ?? DEFAULT_MARKERS,
     linksEnabled: initialState?.linksEnabled,
   });
 
-  return new GlobeController(store, enginePortRef);
+  return new GlobeController(store, enginePortRef, mapCatalog, renderCatalog);
 }

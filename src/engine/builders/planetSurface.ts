@@ -1,7 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck
-import { planetRenderRegistry as PlanetRenderRegistry } from '../planetRenderRegistry';
+import type { RenderCatalog } from '../../catalog/renderCatalog';
+import type { Continent, PlanetMapOptions } from '../../types';
 
-export function buildPlanetSurface(continents = [], outlinePx = 12, mode = 'surface', mapOptions = {}) {
-  return PlanetRenderRegistry.build(mode, continents, { outlinePx, ...mapOptions });
+export function buildPlanetSurface(
+  renderCatalog: RenderCatalog,
+  modeName: string,
+  continents: Continent[] = [],
+  outlinePx = 12,
+  mapOptions: PlanetMapOptions & { name: string }
+) {
+  return renderCatalog.build(modeName, continents, mapOptions, { outlinePx });
 }

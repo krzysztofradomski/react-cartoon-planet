@@ -1,21 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
 import * as THREE from 'three';
-import { planetRenderRegistry as PlanetRenderRegistry } from '../planetRenderRegistry';
-import { buildMapCanvas, buildTextureSphere } from '../builders/mapCanvas';
-import { buildDotCloud, buildHybridArcs, buildCyberpunkArcs, buildCyberpunkRings } from '../builders/dotCloud';
-import { R_OCEAN } from '../constants/globeConstants';
+import type { GlobeRenderConfig, GlobeRenderModeDefinition } from '../types';
+import { buildMapCanvas, buildTextureSphere } from '../engine/builders/mapCanvas';
+import { buildDotCloud, buildHybridArcs, buildCyberpunkArcs, buildCyberpunkRings } from '../engine/builders/dotCloud';
+import { R_OCEAN } from '../engine/constants/globeConstants';
 
-PlanetRenderRegistry.register({
-  id: 'surface',
-  label: 'Solid',
-  build(continents, options = {}) {
+export const SURFACE_RENDER_MODE: GlobeRenderModeDefinition = {
+  name: 'Solid',
+  renderFunction(config: GlobeRenderConfig) {
     const group = new THREE.Group();
-    const outlinePx = options.outlinePx || 12;
-    const canvas = buildMapCanvas(continents, {
-      outlinePx,
-      oceanColor: options.oceanColor,
-      landColor: options.landColor,
+    const canvas = buildMapCanvas(config.continents, {
+      outlinePx: config.outlinePx,
+      oceanColor: config.map.oceanColor,
+      landColor: config.map.landColor,
     });
     group.add(buildTextureSphere(canvas, R_OCEAN));
     return group;
@@ -25,22 +23,20 @@ PlanetRenderRegistry.register({
   },
   getMarkerMode() {
     return 'surface';
-  }
-});
+  },
+};
 
-// 2. Dotted Mode (simple dotted grid)
-PlanetRenderRegistry.register({
-  id: 'dots',
-  label: 'Dots',
-  build(continents, options = {}) {
+export const DOTS_RENDER_MODE: GlobeRenderModeDefinition = {
+  name: 'Dots',
+  renderFunction(config: GlobeRenderConfig) {
     const group = new THREE.Group();
-    const baseCanvas = buildMapCanvas(continents, {
+    const baseCanvas = buildMapCanvas(config.continents, {
       landColor: '#14371f',
       oceanColor: '#06142a',
       drawOutline: false,
     });
     group.add(buildTextureSphere(baseCanvas, R_OCEAN, { opacity: 0.58, transparent: true }));
-    group.add(buildDotCloud(continents, 'dots'));
+    group.add(buildDotCloud(config.continents, 'dots'));
     return group;
   },
   getAtmosphereColor() {
@@ -48,16 +44,14 @@ PlanetRenderRegistry.register({
   },
   getMarkerMode() {
     return 'surface';
-  }
-});
+  },
+};
 
-// 3. Hybrid Mode (dotted grid with dynamic networking connections)
-PlanetRenderRegistry.register({
-  id: 'hybrid',
-  label: 'Hybrid',
-  build(continents, options = {}) {
+export const HYBRID_RENDER_MODE: GlobeRenderModeDefinition = {
+  name: 'Hybrid',
+  renderFunction(config: GlobeRenderConfig) {
     const group = new THREE.Group();
-    const baseCanvas = buildMapCanvas(continents, {
+    const baseCanvas = buildMapCanvas(config.continents, {
       landColor: '#111a2f',
       oceanColor: '#030814',
       drawOutline: false,
@@ -67,7 +61,7 @@ PlanetRenderRegistry.register({
       opacity: 0.52,
       transparent: true,
     }));
-    const dots = buildDotCloud(continents, 'hybrid');
+    const dots = buildDotCloud(config.continents, 'hybrid');
     group.add(dots);
     group.add(buildHybridArcs(dots.userData.landPoints || []));
     return group;
@@ -77,21 +71,19 @@ PlanetRenderRegistry.register({
   },
   getMarkerMode() {
     return 'surface';
-  }
-});
+  },
+};
 
-// 4. Cyberpunk Mode (outstanding high-tech holographic simulation)
-PlanetRenderRegistry.register({
-  id: 'cyberpunk',
-  label: 'Cyber',
-  build(continents, options = {}) {
+export const CYBERPUNK_RENDER_MODE: GlobeRenderModeDefinition = {
+  name: 'Cyber',
+  renderFunction(config: GlobeRenderConfig) {
     const group = new THREE.Group();
-    const baseCanvas = buildMapCanvas(continents, {
+    const baseCanvas = buildMapCanvas(config.continents, {
       landColor: '#0c001c',
       oceanColor: '#020008',
       drawOutline: true,
       outlineColor: '#00ffff',
-      outlinePx: 12,
+      outlinePx: config.outlinePx,
       landGrid: true,
     });
     group.add(buildTextureSphere(baseCanvas, R_OCEAN, {
@@ -99,7 +91,7 @@ PlanetRenderRegistry.register({
       opacity: 0.8,
       transparent: true,
     }));
-    const dots = buildDotCloud(continents, 'cyberpunk');
+    const dots = buildDotCloud(config.continents, 'cyberpunk');
     group.add(buildCyberpunkRings());
     group.add(dots);
     group.add(buildCyberpunkArcs(dots.userData.landPoints || []));
@@ -111,16 +103,15 @@ PlanetRenderRegistry.register({
   getMarkerMode() {
     return 'cyberpunk';
   },
-  animate(group, context) {
-    // Rotate wireframe sphere and scan laser
-    group.traverse(child => {
-      if (child.userData && child.userData.isCyberpunkRings) {
-        child.traverse(sub => {
+  animate(group, _context) {
+    group.traverse((child) => {
+      if (child.userData?.isCyberpunkRings) {
+        child.traverse((sub) => {
           if (sub.isMesh && sub.material.wireframe) {
             sub.rotation.y += 0.0015;
             sub.rotation.x += 0.0006;
           }
-          if (sub.userData && sub.userData.isScanner) {
+          if (sub.userData?.isScanner) {
             const time = performance.now() * 0.0012;
             const y = Math.sin(time) * 1.02;
             sub.position.y = y;
@@ -130,9 +121,7 @@ PlanetRenderRegistry.register({
           }
         });
       }
-      
-      // Animate flying data packets along network arcs
-      if (child.userData && child.userData.particles && child.userData.pPoints) {
+      if (child.userData?.particles && child.userData?.pPoints) {
         const particles = child.userData.particles;
         const pPoints = child.userData.pPoints;
         const posAttr = pPoints.geometry.getAttribute('position');
@@ -146,9 +135,12 @@ PlanetRenderRegistry.register({
         posAttr.needsUpdate = true;
       }
     });
-  }
-});
+  },
+};
 
-export function registerAllRenderModes() {
-  // modes self-register on import
-}
+export const BUILTIN_RENDER_MODES: GlobeRenderModeDefinition[] = [
+  SURFACE_RENDER_MODE,
+  DOTS_RENDER_MODE,
+  HYBRID_RENDER_MODE,
+  CYBERPUNK_RENDER_MODE,
+];

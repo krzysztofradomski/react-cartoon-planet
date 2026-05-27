@@ -24,7 +24,21 @@
 .demo-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.demo-actions-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(230, 235, 255, 0.55);
+  margin-left: 4px;
+}
+
+.demo-actions-label:first-child {
+  margin-left: 0;
 }
 
 .demo-actions button {
@@ -41,6 +55,11 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
+.demo-actions button.is-active {
+  background: rgba(124, 92, 255, 0.35);
+  border-color: rgba(124, 92, 255, 0.65);
+}
+
 .demo-canvas {
   min-height: 0;
 }
@@ -50,8 +69,13 @@
   background: rgba(3, 7, 18, 0.65);
   padding: 10px 16px;
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   font-size: 12px;
+}
+
+.demo-status span:last-child {
+  margin-left: auto;
 }
 
 .demo-error {

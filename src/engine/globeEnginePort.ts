@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { GlobeControlsLike, GlobeEnginePort, Marker, RenderModeId } from '../types';
+import type { GlobeControlsLike, GlobeEnginePort, Marker } from '../types';
 
 /** Typed bridge between React controller and the Three.js scene host. */
 export interface GlobeEnginePortRef extends RefObject<GlobeEnginePort> {}
@@ -21,7 +21,7 @@ export function clearEnginePort(portRef: GlobeEnginePortRef): void {
 }
 
 export type SceneHostOptions = {
-  getRenderMode: () => RenderModeId;
+  getRenderMode: () => string;
   getMarkers: () => Marker[];
   getLinksEnabled: () => boolean;
   onGlobeClick?: (lng: number, lat: number) => void;

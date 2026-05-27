@@ -3,7 +3,7 @@ import type { CartoonPlanetUiOptions, GlobeEnginePort } from '../types';
 import { GlobeController } from '../globeController';
 import { GlobeUi } from '../components/globeUi/GlobeUi';
 import { attachGlobeScene } from './scene/sceneHost';
-import './renderModes/registerRenderModes';
+import { CYBERPUNK_RENDER_MODE } from '../presets/builtinRenderModes';
 
 export function GlobeRuntime({
   controller,
@@ -46,7 +46,7 @@ export function GlobeRuntime({
   const setPlacingMode = (val: boolean) => (val ? controller.startPlacing() : controller.cancelPlacing());
 
   return (
-    <div className={`root ${renderMode === 'cyberpunk' ? 'mode-cyberpunk' : ''}`}>
+    <div className={`root ${renderMode === CYBERPUNK_RENDER_MODE.name ? 'mode-cyberpunk' : ''}`}>
       <div ref={mountRef} className="canvas-mount" />
       <GlobeUi
         ui={ui}
