@@ -1,0 +1,24 @@
+{
+  "name": "react-cartoon-planet",
+  "version": "1.0.0",
+  "description": "an animated globe for React apps",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "hello@radomski.dev",
+  "homepage": "https://radomski.dev/react-cartoon-planet",
+  "repository": "https://github.com/radomski/react-cartoon-planet",
+  "keywords": [
+    "react",
+    "globe",
+    "cartoon",
+    "planet",
+    "animation"
+  ],
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "license": "MIT"
+}

@@ -19,6 +19,7 @@ const MAX_RADIUS     = 6.0;
 const OCEAN_COLOR    = '#1f5fea';
 const START_VIEW_KEY = 'cartoonPlanetStartView';
 const RENDER_MODE_KEY = 'cartoonPlanetRenderMode';
+const PLANET_MAP_KEY = 'cartoonPlanetMap';
 const START_VIEWS = {
   globe:  { lng: 0, lat: 20, alt_m: 14_000_000 },
   ground: { lng: 0, lat: 20, alt_m: 1_500 },
@@ -60,10 +61,13 @@ const PlanetRenderRegistry = {
     }
   },
 
-  build(id, continents, options) {
+  build(id, continents, options = {}) {
     const mode = this.get(id) || this.get('surface');
     if (!mode) return new THREE.Group();
-    const group = mode.build(continents, options);
+    const mapOptions = (typeof PlanetMapRegistry !== 'undefined' && PlanetMapRegistry.getOptions)
+      ? PlanetMapRegistry.getOptions()
+      : {};
+    const group = mode.build(continents, { ...mapOptions, ...options });
     group.userData.mode = id;
     return group;
   },
@@ -123,6 +127,7 @@ class GlobeStateStore {
   constructor(initialState = {}) {
     this.state = {
       renderMode: 'surface',
+      planetMap: 'earth',
       startView: 'globe',
       markers: window.CARTOON_PLANET_MARKERS || DEFAULT_MARKERS,
       placingMode: false,
@@ -180,6 +185,19 @@ class GlobeController {
     if (this.stateRef.current && this.stateRef.current.setRenderMode) {
       this.stateRef.current.setRenderMode(mode);
     }
+  }
+
+  setPlanetMap(mapId) {
+    if (!window.PlanetMapRegistry || !PlanetMapRegistry.get(mapId)) return;
+    this.store.setState({ planetMap: mapId });
+    try {
+      localStorage.setItem(PLANET_MAP_KEY, mapId);
+    } catch {}
+    PlanetMapRegistry.setActive(mapId).then(() => {
+      if (this.stateRef.current && this.stateRef.current.rebuildPlanetMap) {
+        this.stateRef.current.rebuildPlanetMap();
+      }
+    });
   }
 
   setStartView(view) {
@@ -278,6 +296,15 @@ const globeStoreInstance = new GlobeStateStore({
       return 'surface';
     }
   })(),
+  planetMap: (() => {
+    try {
+      const fromWindow = typeof window.CARTOON_PLANET_MAP === 'string' ? window.CARTOON_PLANET_MAP : null;
+      const stored = localStorage.getItem(PLANET_MAP_KEY) || fromWindow;
+      return stored && window.PlanetMapRegistry && PlanetMapRegistry.get(stored) ? stored : (PlanetMapRegistry.getActiveId() || 'earth');
+    } catch {
+      return 'earth';
+    }
+  })(),
   startView: (() => {
     try {
       return localStorage.getItem('cartoonPlanetStartView') === 'ground' ? 'ground' : 'globe';
@@ -286,6 +313,9 @@ const globeStoreInstance = new GlobeStateStore({
     }
   })()
 });
+if (window.PlanetMapRegistry && PlanetMapRegistry.get(globeStoreInstance.getState().planetMap)) {
+  PlanetMapRegistry._activeId = globeStoreInstance.getState().planetMap;
+}
 window.GlobeController = new GlobeController(globeStoreInstance, globeStateRef);
 
 // =============================================================================
@@ -960,8 +990,8 @@ function buildCyberpunkRings() {
   return group;
 }
 
-function buildPlanetSurface(continents = [], outlinePx = 12, mode = 'surface') {
-  return PlanetRenderRegistry.build(mode, continents, { outlinePx });
+function buildPlanetSurface(continents = [], outlinePx = 12, mode = 'surface', mapOptions = {}) {
+  return PlanetRenderRegistry.build(mode, continents, { outlinePx, ...mapOptions });
 }
 
 function buildStarfield() {
@@ -1342,7 +1372,11 @@ PlanetRenderRegistry.register({
   build(continents, options = {}) {
     const group = new THREE.Group();
     const outlinePx = options.outlinePx || 12;
-    const canvas = buildMapCanvas(continents, { outlinePx });
+    const canvas = buildMapCanvas(continents, {
+      outlinePx,
+      oceanColor: options.oceanColor,
+      landColor: options.landColor,
+    });
     group.add(buildTextureSphere(canvas, R_OCEAN));
     return group;
   },
@@ -1863,6 +1897,29 @@ function StartLevelControl({ startView, setInitialView }) {
   );
 }
 
+function PlanetMapControl({ planetMap, selectPlanetMap }) {
+  const maps = window.PlanetMapRegistry ? PlanetMapRegistry.getAll() : [];
+  if (maps.length <= 1) return null;
+  return (
+    <div className="panel">
+      <div className="panel-title">Planet map</div>
+      <div className="segmented" role="group" aria-label="Planet map">
+        {maps.map(map => (
+          <button
+            key={map.id}
+            type="button"
+            className={planetMap === map.id ? 'is-active' : ''}
+            aria-pressed={planetMap === map.id}
+            onClick={() => selectPlanetMap(map.id)}
+          >
+            {map.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function RenderModeControl({ renderMode, selectRenderMode }) {
   return (
     <div className="panel">
@@ -2236,7 +2293,7 @@ function App() {
     });
   }, []);
 
-  const { renderMode, startView, markers, placingMode, hud, markerLabels, linksEnabled, fps } = globeState;
+  const { renderMode, planetMap, startView, markers, placingMode, hud, markerLabels, linksEnabled, fps } = globeState;
 
   useEffect(() => {
     stateRef.current.isPlacingMode = placingMode;
@@ -2286,6 +2343,10 @@ function App() {
       });
     }
 
+    function getMapOptions() {
+      return window.PlanetMapRegistry ? PlanetMapRegistry.getOptions() : {};
+    }
+
     function rebuildSurface(outlinePx = surfaceGroup.userData.outlinePx || 12, mode = surfaceGroup.userData.mode || renderMode) {
       while (surfaceGroup.children.length) {
         const child = surfaceGroup.children.pop();
@@ -2293,7 +2354,10 @@ function App() {
       }
       surfaceGroup.userData.outlinePx = outlinePx;
       surfaceGroup.userData.mode = mode;
-      surfaceGroup.add(buildPlanetSurface(window.CONTINENTS || [], outlinePx, mode));
+      const continents = window.PlanetMapRegistry
+        ? PlanetMapRegistry.getContinents()
+        : (window.CONTINENTS || []);
+      surfaceGroup.add(buildPlanetSurface(continents, outlinePx, mode, getMapOptions()));
       
       const modeObj = PlanetRenderRegistry.get(mode);
       const markerMode = modeObj.getMarkerMode ? modeObj.getMarkerMode() : 'surface';
@@ -2326,12 +2390,10 @@ function App() {
     rebuildContinents();
     rebuildMarkers();
 
-    // Kick off real-data fetch and rebuild when it lands.
-    if (typeof window.loadRealContinents === 'function') {
-      window.loadRealContinents()
-        .then(() => rebuildContinents())
-        .catch(err => console.warn('Continent data fetch failed; using fallback.', err));
-    }
+    // Kick off map data load and rebuild when it lands.
+    const loadMap = window.PlanetMapRegistry
+      ? () => PlanetMapRegistry.loadActive()
+      : (typeof window.loadRealContinents === 'function' ? window.loadRealContinents : null);
 
     scene.add(planet);
 
@@ -2362,6 +2424,29 @@ function App() {
     const atmo = new THREE.Mesh(atmoGeo, atmoMat);
     scene.add(atmo);
 
+    function applyMapAtmosphere() {
+      const mapOpts = getMapOptions();
+      const strength = mapOpts.atmosphereStrength != null ? mapOpts.atmosphereStrength : 1;
+      atmoMat.uniforms.uColor.value.set(mapOpts.atmosphereColor || '#73b3ff');
+      atmo.userData.strength = strength;
+    }
+    applyMapAtmosphere();
+
+    if (loadMap) {
+      loadMap()
+        .then(() => {
+          rebuildContinents();
+          applyMapAtmosphere();
+        })
+        .catch(err => console.warn('Planet map data fetch failed; using fallback.', err));
+    }
+
+    function onPlanetMapChanged() {
+      rebuildContinents();
+      applyMapAtmosphere();
+    }
+    window.addEventListener('planetmap:changed', onPlanetMapChanged);
+
     // Stars (only visible far out)
     const stars = buildStarfield();
     scene.add(stars);
@@ -2382,6 +2467,10 @@ function App() {
     stateRef.current.camera   = camera;
     stateRef.current.renderer = renderer;
     stateRef.current.setRenderMode = (mode) => rebuildSurface(surfaceGroup.userData.outlinePx || 12, mode);
+    stateRef.current.rebuildPlanetMap = () => {
+      rebuildContinents();
+      applyMapAtmosphere();
+    };
     stateRef.current.setMarkers = (nextMarkers) => {
       const list = Array.isArray(nextMarkers) ? nextMarkers : [];
       rebuildMarkers(list, surfaceGroup.userData.mode);
@@ -2460,15 +2549,17 @@ function App() {
       // No ground patch — cartoon planet stays clean at all zoom levels.
 
       // Fade atmosphere / stars based on altitude
-      atmoMat.opacity = THREE.MathUtils.clamp(alt / 1_000_000, 0, 1);
+      const atmoStrength = atmo.userData.strength != null ? atmo.userData.strength : 1;
+      atmoMat.opacity = THREE.MathUtils.clamp((alt / 1_000_000) * atmoStrength, 0, 1);
       stars.material.opacity = THREE.MathUtils.clamp(alt / 8_000_000, 0, 1);
       stars.material.transparent = true;
 
-      // Atmosphere color morphing depending on render mode
+      // Atmosphere color morphing depending on render mode, scaled by map config
       const currentMode = surfaceGroup.userData.mode;
       const modeObj = PlanetRenderRegistry.get(currentMode);
-      const atmoColor = modeObj.getAtmosphereColor ? modeObj.getAtmosphereColor() : new THREE.Color(0.45, 0.7, 1.0);
-      atmoMat.uniforms.uColor.value.copy(atmoColor);
+      const modeAtmo = modeObj.getAtmosphereColor ? modeObj.getAtmosphereColor() : new THREE.Color(0.45, 0.7, 1.0);
+      const mapAtmo = new THREE.Color(getMapOptions().atmosphereColor || '#73b3ff');
+      atmoMat.uniforms.uColor.value.copy(modeAtmo).lerp(mapAtmo, 0.35);
 
       // Delegate custom surface updates to current mode
       PlanetRenderRegistry.animate(currentMode, surfaceGroup, { alt, time: performance.now() });
@@ -2568,6 +2659,7 @@ function App() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('planetmap:changed', onPlanetMapChanged);
       renderer.domElement.removeEventListener('click', handleCanvasClick);
       renderer.dispose();
       delete window.__setMarkers;
@@ -2580,6 +2672,7 @@ function App() {
   const flyTo = (lng, lat, alt_m) => window.GlobeController.flyTo(lng, lat, alt_m);
   const setInitialView = (view) => window.GlobeController.setStartView(view);
   const selectRenderMode = (mode) => window.GlobeController.setRenderMode(mode);
+  const selectPlanetMap = (mapId) => window.GlobeController.setPlanetMap(mapId);
   const setPlacingMode = (val) => val ? window.GlobeController.startPlacing() : window.GlobeController.cancelPlacing();
 
   return (
@@ -2605,6 +2698,7 @@ function App() {
       <div className="hud-overlay-container">
         <FpsDebugHUD fps={fps} />
         <StartLevelControl startView={startView} setInitialView={setInitialView} />
+        <PlanetMapControl planetMap={planetMap} selectPlanetMap={selectPlanetMap} />
         <RenderModeControl renderMode={renderMode} selectRenderMode={selectRenderMode} />
         <QuickJumpControl flyTo={flyTo} />
         <MarkerManager 
