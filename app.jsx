@@ -993,8 +993,21 @@ function buildCityMarkers(cities) {
   return group;
 }
 
+// Pre-allocated static scratch variables to avoid GC thrashing / memory allocations on tick frames
+const _cameraDir = new THREE.Vector3();
+const _anchorTemp = new THREE.Vector3();
+const _normalTemp = new THREE.Vector3();
+
+const _vOrb1 = new THREE.Vector3();
+const _vOrb2 = new THREE.Vector3();
+const _vOrbUp = new THREE.Vector3();
+const _vOrbPos = new THREE.Vector3();
+const _qOrb = new THREE.Quaternion();
+const _vAxisZ = new THREE.Vector3(0, 0, 1);
+const _vAxisY = new THREE.Vector3(0, 1, 0);
+
 function orientToSurface(mesh, up) {
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), up);
+  mesh.quaternion.setFromUnitVectors(_vAxisY, up);
 }
 
 function buildMarkerMesh(marker, mode = 'surface', allMarkers = []) {
@@ -1277,29 +1290,33 @@ function projectMarkerLabels(markerGroup, camera, canvas) {
   if (!markerGroup) return [];
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const cameraDir = camera.position.clone().normalize();
+  
+  _cameraDir.copy(camera.position).normalize();
   const labels = [];
 
   for (const item of markerGroup.userData.items || []) {
     const marker = item.userData.marker;
-    const anchor = item.userData.anchor.clone();
-    const normal = anchor.clone().normalize();
-    const projected = anchor.clone().project(camera);
+    if (!item.userData.anchor) continue;
+
+    _anchorTemp.copy(item.userData.anchor);
+    _normalTemp.copy(_anchorTemp).normalize();
+    _anchorTemp.project(camera);
+
     const visible =
-      normal.dot(cameraDir) > -0.08 &&
-      projected.z > -1 &&
-      projected.z < 1 &&
-      projected.x >= -1.15 &&
-      projected.x <= 1.15 &&
-      projected.y >= -1.15 &&
-      projected.y <= 1.15;
+      _normalTemp.dot(_cameraDir) > -0.08 &&
+      _anchorTemp.z > -1 &&
+      _anchorTemp.z < 1 &&
+      _anchorTemp.x >= -1.15 &&
+      _anchorTemp.x <= 1.15 &&
+      _anchorTemp.y >= -1.15 &&
+      _anchorTemp.y <= 1.15;
 
     labels.push({
       id: marker.id || marker.label || `${marker.lng},${marker.lat}`,
       label: marker.label || marker.id || 'Marker',
       color: marker.color || '#ff5e3a',
-      x: (projected.x * 0.5 + 0.5) * w,
-      y: (-projected.y * 0.5 + 0.5) * h,
+      x: (_anchorTemp.x * 0.5 + 0.5) * w,
+      y: (-_anchorTemp.y * 0.5 + 0.5) * h,
       visible,
     });
   }
@@ -2440,14 +2457,17 @@ function App() {
             const e1 = child.userData.orbitE1;
             const e2 = child.userData.orbitE2;
             const alt = child.userData.altitude;
-            const up = e1.clone().multiplyScalar(Math.cos(theta))
-                         .add(e2.clone().multiplyScalar(Math.sin(theta)))
-                         .normalize();
+            
+            _vOrb1.copy(e1).multiplyScalar(Math.cos(theta));
+            _vOrb2.copy(e2).multiplyScalar(Math.sin(theta));
+            _vOrbUp.addVectors(_vOrb1, _vOrb2).normalize();
 
             child.children.forEach(sub => {
               if (sub.userData.isPulsingRing || sub.userData.isRotatingRing || sub.userData.isHalo) {
-                sub.position.copy(up.clone().multiplyScalar(alt + 0.001));
-                sub.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), up);
+                _vOrbPos.copy(_vOrbUp).multiplyScalar(alt + 0.001);
+                sub.position.copy(_vOrbPos);
+                _qOrb.setFromUnitVectors(_vAxisZ, _vOrbUp);
+                sub.quaternion.copy(_qOrb);
               } else {
                 let offset = 0;
                 if (child.userData.marker.shape === 'cube') offset = child.userData.marker.size * 0.58;
@@ -2456,13 +2476,15 @@ function App() {
                 
                 if (sub.userData.isCyberpunkBeacon) offset = 0;
                 
-                sub.position.copy(up.clone().multiplyScalar(alt + offset));
-                orientToSurface(sub, up);
+                _vOrbPos.copy(_vOrbUp).multiplyScalar(alt + offset);
+                sub.position.copy(_vOrbPos);
+                orientToSurface(sub, _vOrbUp);
               }
             });
 
             const labelHeight = child.userData.labelHeight;
-            child.userData.anchor.copy(up.clone().multiplyScalar(alt + labelHeight));
+            _vOrbPos.copy(_vOrbUp).multiplyScalar(alt + labelHeight);
+            child.userData.anchor.copy(_vOrbPos);
           }
 
           if (child.userData.isPulsingRing) {
