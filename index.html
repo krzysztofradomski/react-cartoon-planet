@@ -40,6 +40,14 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     }
     .hud-tl { top: 16px; left: 16px; min-width: 180px; }
+    .hud-overlay-container .hud-debug {
+      position: static;
+      width: 100%;
+      flex-shrink: 0;
+      padding: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      pointer-events: none;
+    }
     .hud-row { display: flex; justify-content: space-between; gap: 14px; font-size: 13px; line-height: 1.8; }
     .hud-label { color: var(--hud-dim); letter-spacing: 0.12em; font-size: 11px; }
     .hud-value { color: var(--hud-fg); font-variant-numeric: tabular-nums; }

@@ -127,6 +127,7 @@ class GlobeStateStore {
       markers: window.CARTOON_PLANET_MARKERS || DEFAULT_MARKERS,
       placingMode: false,
       hud: { altitude: 0, scaleLabel: '0 m', focusLat: 0, focusLng: 0, scaleBarPx: 40, scaleBarLabel: '0 m' },
+      fps: 0,
       markerLabels: [],
       linksEnabled: true,
       ...initialState
@@ -260,6 +261,10 @@ class GlobeController {
 
   updateMarkerLabels(labels) {
     this.store.setState({ markerLabels: labels });
+  }
+
+  updateFps(fps) {
+    this.store.setState({ fps });
   }
 }
 
@@ -1809,6 +1814,17 @@ function AltitudeCoordinatesHUD({ hud }) {
   );
 }
 
+function FpsDebugHUD({ fps }) {
+  return (
+    <div className="hud hud-debug" aria-label="Frame rate">
+      <div className="hud-row">
+        <span className="hud-label">FPS</span>
+        <span className="hud-value">{fps}</span>
+      </div>
+    </div>
+  );
+}
+
 function ScaleBarHUD({ hud }) {
   return (
     <div className="scalebar">
@@ -2220,7 +2236,7 @@ function App() {
     });
   }, []);
 
-  const { renderMode, startView, markers, placingMode, hud, markerLabels, linksEnabled } = globeState;
+  const { renderMode, startView, markers, placingMode, hud, markerLabels, linksEnabled, fps } = globeState;
 
   useEffect(() => {
     stateRef.current.isPlacingMode = placingMode;
@@ -2415,9 +2431,19 @@ function App() {
 
     // Animate
     let raf, tickCount = 0;
+    let fpsFrameCount = 0;
+    let fpsLastSample = performance.now();
     window.__tickCount = () => tickCount;
     function tick() {
       tickCount++;
+      fpsFrameCount++;
+      const fpsNow = performance.now();
+      if (fpsNow - fpsLastSample >= 500) {
+        const fps = Math.round((fpsFrameCount * 1000) / (fpsNow - fpsLastSample));
+        fpsFrameCount = 0;
+        fpsLastSample = fpsNow;
+        window.GlobeController.updateFps(fps);
+      }
       try {
       controls.tick();
       const alt = (controls.radius - 1) * EARTH_RADIUS_M;
@@ -2577,6 +2603,7 @@ function App() {
       </div>
 
       <div className="hud-overlay-container">
+        <FpsDebugHUD fps={fps} />
         <StartLevelControl startView={startView} setInitialView={setInitialView} />
         <RenderModeControl renderMode={renderMode} selectRenderMode={selectRenderMode} />
         <QuickJumpControl flyTo={flyTo} />
