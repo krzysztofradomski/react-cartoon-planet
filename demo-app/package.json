@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "react": "^19.2.6",
+    "react-cartoon-planet": "file:..",
     "react-dom": "^19.2.6"
   },
   "devDependencies": {

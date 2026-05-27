@@ -1,10 +1,26 @@
 {
   "name": "react-cartoon-planet",
   "version": "1.0.0",
-  "description": "an animated globe for React apps",
-  "main": "index.js",
+  "description": "Animated cartoon globe for React — zoom from orbit to ground level",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/index.css"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test:geo": "node --experimental-strip-types scripts/test-geo.ts",
+    "prepare": "npm run build"
   },
   "author": "hello@radomski.dev",
   "homepage": "https://radomski.dev/react-cartoon-planet",
@@ -14,11 +30,24 @@
     "globe",
     "cartoon",
     "planet",
-    "animation"
+    "animation",
+    "three.js"
   ],
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20"
   },
-  "license": "MIT"
+  "dependencies": {
+    "earcut": "^2.2.4",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/three": "^0.160.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  },
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }
