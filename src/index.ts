@@ -6,9 +6,13 @@ export type {
   CartoonPlanetUiOptions,
   GlobeEnginePort,
   GlobeRenderConfig,
+  GlobeAutoRotateOptions,
+  GlobeFlyOptions,
   GlobeRenderModeDefinition,
+  GlobeRotateOptions,
   GlobeRuntimeRef,
   GlobeState,
+  GlobeView,
   HudState,
   Marker,
   MarkerLabel,
@@ -16,18 +20,31 @@ export type {
   PlanetMapDefinition,
   PlanetMapOptions,
   StartViewId,
-} from './types';
+} from './CartoonPlanet';
+export { START_VIEWS } from './globeController';
 export {
   BUILTIN_MAPS,
   EARTH_MAP,
   MOON_MAP,
   resolveBundledAssetUrl,
-} from './presets/builtinMaps';
-export {
   BUILTIN_RENDER_MODES,
   SURFACE_RENDER_MODE,
   DOTS_RENDER_MODE,
   HYBRID_RENDER_MODE,
   CYBERPUNK_RENDER_MODE,
-} from './presets/builtinRenderModes';
-export { flattenGeoJsonToContinents } from './catalog/mapCatalog';
+  flattenGeoJsonToContinents,
+  useCartoonPlanet,
+  AltitudeDisplay,
+  CartoonPlanetDefaultUi,
+  FpsDisplay,
+  HintDisplay,
+  LinksDisplay,
+  MarkerLabelsDisplay,
+  MarkerManagerControl,
+  PlanetMapControl,
+  PlacingToastDisplay,
+  QuickJumpControl,
+  RenderModeControl,
+  ScaleBarDisplay,
+  StartLevelControl,
+} from './CartoonPlanet';

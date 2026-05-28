@@ -21,6 +21,8 @@ export class GlobeControls {
 
     this._dragging = false;
     this._lastX = 0; this._lastY = 0;
+    this._autoRotateDegPerSec = 0;
+    this._lastTickMs = performance.now();
 
     dom.addEventListener('pointerdown', this._onDown);
     dom.addEventListener('pointermove', this._onMove);
@@ -77,17 +79,67 @@ export class GlobeControls {
   flyTo(lng, lat, radius, duration = 1500) {
     const phi   = (90 - lat) * Math.PI / 180;
     const theta = (lng + 180) * Math.PI / 180;
+    this._animateTo(radius, theta, phi, duration);
+  }
+
+  rotateBy(lngDelta, latDelta, duration = 600) {
+    const theta = this.targetTheta + lngDelta * Math.PI / 180;
+    const phi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - latDelta * Math.PI / 180));
+    this._animateTo(this.targetRadius, theta, phi, duration);
+  }
+
+  rotateTo(lng, lat, duration = 600) {
+    const phi = Math.max(0.05, Math.min(Math.PI - 0.05, (90 - lat) * Math.PI / 180));
+    const theta = (lng + 180) * Math.PI / 180;
+    this._animateTo(this.targetRadius, theta, phi, duration);
+  }
+
+  startAutoRotate(speedDegPerSec = 12) {
+    this._autoRotateDegPerSec = speedDegPerSec;
+    this._lastTickMs = performance.now();
+  }
+
+  stopAutoRotate() {
+    this._autoRotateDegPerSec = 0;
+  }
+
+  getView() {
+    const lng = this.targetTheta * 180 / Math.PI - 180;
+    const lat = 90 - this.targetPhi * 180 / Math.PI;
+    return {
+      lng,
+      lat,
+      altitudeMeters: (this.targetRadius - 1) * EARTH_RADIUS_M,
+    };
+  }
+
+  _animateTo(radius, theta, phi, duration) {
+    if (duration <= 0) {
+      this.radius = radius;
+      this.theta = theta;
+      this.phi = phi;
+      this.targetRadius = radius;
+      this.targetTheta = theta;
+      this.targetPhi = phi;
+      this._anim = null;
+      this._update(true);
+      return;
+    }
     this._anim = {
       t0: performance.now(),
       duration,
       from: { r: this.targetRadius, t: this.targetTheta, p: this.targetPhi },
-      to:   { r: radius, t: theta, p: phi },
+      to: { r: radius, t: theta, p: phi },
     };
   }
 
   tick() {
+    const now = performance.now();
+    const dtSec = Math.min(0.1, (now - this._lastTickMs) / 1000);
+    this._lastTickMs = now;
+
     if (this._anim) {
-      const t = Math.min(1, (performance.now() - this._anim.t0) / this._anim.duration);
+      const t = Math.min(1, (now - this._anim.t0) / this._anim.duration);
       const k = 1 - Math.pow(1 - t, 3);
       const { from, to } = this._anim;
       // interp radius in log space so altitude feels even
@@ -97,6 +149,11 @@ export class GlobeControls {
       this.targetPhi    = from.p + (to.p - from.p) * k;
       if (t >= 1) this._anim = null;
     }
+
+    if (this._autoRotateDegPerSec) {
+      this.targetTheta += (this._autoRotateDegPerSec * Math.PI / 180) * dtSec;
+    }
+
     this._update(false);
   }
 

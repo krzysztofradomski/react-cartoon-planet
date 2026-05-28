@@ -13,13 +13,12 @@ import { BUILTIN_RENDER_MODES } from './presets/builtinRenderModes';
 import {
   DEFAULT_UI_OPTIONS,
   type CartoonPlanetController,
-  CartoonPlanetInitialState,
-  CartoonPlanetProps,
-  CartoonPlanetUiOptions,
-  GlobeEnginePort,
-  GlobeRenderModeDefinition,
-  GlobeState,
-  PlanetMapDefinition,
+  type CartoonPlanetInitialState,
+  type CartoonPlanetProps,
+  type CartoonPlanetUiOptions,
+  type GlobeEnginePort,
+  type GlobeRenderModeDefinition,
+  type PlanetMapDefinition,
 } from './types';
 import './styles/cartoon-planet.css';
 
@@ -30,9 +29,13 @@ export type {
   CartoonPlanetUiOptions,
   GlobeEnginePort,
   GlobeRenderConfig,
+  GlobeAutoRotateOptions,
+  GlobeFlyOptions,
   GlobeRenderModeDefinition,
+  GlobeRotateOptions,
   GlobeRuntimeRef,
   GlobeState,
+  GlobeView,
   HudState,
   Marker,
   MarkerLabel,
@@ -55,10 +58,33 @@ export {
   HYBRID_RENDER_MODE,
   CYBERPUNK_RENDER_MODE,
 } from './presets/builtinRenderModes';
+export { START_VIEWS } from './globeController';
 export { flattenGeoJsonToContinents } from './catalog/mapCatalog';
+export { useCartoonPlanet } from './context/cartoonPlanetContext';
+export {
+  AltitudeDisplay,
+  FpsDisplay,
+  HintDisplay,
+  LinksDisplay,
+  MarkerLabelsDisplay,
+  MarkerManagerControl,
+  PlanetMapControl,
+  PlacingToastDisplay,
+  QuickJumpControl,
+  RenderModeControl,
+  ScaleBarDisplay,
+  StartLevelControl,
+  CartoonPlanetDefaultUi,
+} from './components/globeUi/composables';
 
-function mergeUiOptions(ui?: Partial<CartoonPlanetUiOptions>): CartoonPlanetUiOptions {
-  return { ...DEFAULT_UI_OPTIONS, ...(ui || {}) };
+function mergeUiOptions(ui?: Partial<CartoonPlanetUiOptions>): {
+  options: CartoonPlanetUiOptions;
+  hasExplicitUi: boolean;
+} {
+  if (!ui) {
+    return { options: DEFAULT_UI_OPTIONS, hasExplicitUi: false };
+  }
+  return { options: { ...DEFAULT_UI_OPTIONS, ...ui }, hasExplicitUi: true };
 }
 
 function mergeMaps(maps: PlanetMapDefinition[], initial?: PlanetMapDefinition): PlanetMapDefinition[] {
@@ -75,11 +101,11 @@ function mergeRenderModes(
 }
 
 export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetProps>(function CartoonPlanet(
-  { className, style, maps, renderModes, ui, initialState, onReady, onStateChange },
+  { className, style, maps, renderModes, ui, initialState, onReady, onStateChange, children },
   ref
 ) {
   const enginePortRef = useRef<GlobeEnginePort>({});
-  const uiOptions = useMemo(() => mergeUiOptions(ui), [ui]);
+  const { options: uiOptions, hasExplicitUi } = useMemo(() => mergeUiOptions(ui), [ui]);
   const initialStateKey = useMemo(() => JSON.stringify(initialState || {}), [initialState]);
   const stableInitialState = useMemo<CartoonPlanetInitialState>(
     () => JSON.parse(initialStateKey),
@@ -135,7 +161,14 @@ export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetPr
 
   return (
     <div className={className} style={rootStyle}>
-      <GlobeRuntime controller={controller} enginePortRef={enginePortRef} ui={uiOptions} />
+      <GlobeRuntime
+        controller={controller}
+        enginePortRef={enginePortRef}
+        ui={uiOptions}
+        hasExplicitUi={hasExplicitUi}
+      >
+        {children}
+      </GlobeRuntime>
     </div>
   );
 });

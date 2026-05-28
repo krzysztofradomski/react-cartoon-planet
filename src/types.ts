@@ -100,8 +100,34 @@ export interface CartoonPlanetInitialState {
   linksEnabled?: boolean;
 }
 
+export interface GlobeView {
+  lng: number;
+  lat: number;
+  altitudeMeters: number;
+}
+
+export interface GlobeRotateOptions {
+  /** Animation duration in ms. `0` applies instantly. Default: 600. */
+  duration?: number;
+}
+
+export interface GlobeFlyOptions {
+  /** Animation duration in ms. `0` applies instantly. Default: 1800. */
+  duration?: number;
+}
+
+export interface GlobeAutoRotateOptions {
+  /** Longitude spin speed in degrees per second. Default: 12. */
+  speed?: number;
+}
+
 export interface GlobeControlsLike {
   flyTo(lng: number, lat: number, radius: number, duration?: number): void;
+  rotateBy(lngDelta: number, latDelta: number, duration?: number): void;
+  rotateTo(lng: number, lat: number, duration?: number): void;
+  startAutoRotate?(speedDegPerSec?: number): void;
+  stopAutoRotate?(): void;
+  getView(): GlobeView;
 }
 
 export interface GlobeEnginePort {
@@ -141,8 +167,18 @@ export interface CartoonPlanetController {
   setLinksEnabled(enabled: boolean): void;
   startPlacing(): void;
   cancelPlacing(): void;
-  flyTo(lng: number, lat: number, altitudeMeters: number): void;
+  flyTo(lng: number, lat: number, altitudeMeters: number, options?: GlobeFlyOptions): void;
   flyToMarker(id: string): void;
+  /** Rotate the view by delta degrees on longitude and latitude axes. Altitude is unchanged. */
+  rotateBy(lngDelta: number, latDelta: number, options?: GlobeRotateOptions): void;
+  /** Rotate the view to an absolute lng/lat while keeping the current altitude. */
+  rotateTo(lng: number, lat: number, options?: GlobeRotateOptions): void;
+  /** Spin the globe continuously around its vertical axis. */
+  startAutoRotate(options?: GlobeAutoRotateOptions): void;
+  /** Stop continuous spin started by {@link startAutoRotate}. */
+  stopAutoRotate(): void;
+  /** Current camera focus point on the globe surface. */
+  getView(): GlobeView;
 }
 
 export interface CartoonPlanetProps {
@@ -153,10 +189,13 @@ export interface CartoonPlanetProps {
   maps?: PlanetMapDefinition[];
   /** Available render modes (defaults to built-in Solid/Dots/Hybrid/Cyber). */
   renderModes?: GlobeRenderModeDefinition[];
+  /** Toggle built-in UI pieces. Ignored when composable `children` are provided. All off by default. */
   ui?: Partial<CartoonPlanetUiOptions>;
   initialState?: CartoonPlanetInitialState;
   onReady?: (controller: CartoonPlanetController) => void;
   onStateChange?: (state: GlobeState) => void;
+  /** Composable HUD and control panels rendered inside the globe viewport. */
+  children?: React.ReactNode;
 }
 
 export interface ContinentRing {
@@ -180,17 +219,17 @@ export interface PlanetMapOptions {
 }
 
 export const DEFAULT_UI_OPTIONS: CartoonPlanetUiOptions = {
-  altitudeHud: true,
-  scaleBar: true,
-  fpsHud: true,
-  markerLabels: true,
-  hint: true,
-  placingToast: true,
-  startLevelControl: true,
-  planetMapControl: true,
-  renderModeControl: true,
-  quickJumpControl: true,
-  markerManagerControl: true,
+  altitudeHud: false,
+  scaleBar: false,
+  fpsHud: false,
+  markerLabels: false,
+  hint: false,
+  placingToast: false,
+  startLevelControl: false,
+  planetMapControl: false,
+  renderModeControl: false,
+  quickJumpControl: false,
+  markerManagerControl: false,
 };
 
 export const DEFAULT_MARKERS: Marker[] = [

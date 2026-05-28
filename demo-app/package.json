@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "npm run build --prefix ..",
     "predev": "npm run build --prefix ..",
     "dev": "vite",
     "prebuild": "npm run build --prefix ..",

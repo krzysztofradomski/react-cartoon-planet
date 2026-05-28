@@ -5,7 +5,11 @@ import type {
   CartoonPlanetInitialState,
   GlobeEnginePort,
   GlobeRenderModeDefinition,
+  GlobeAutoRotateOptions,
+  GlobeFlyOptions,
+  GlobeRotateOptions,
   GlobeState,
+  GlobeView,
   Marker,
   MarkerShape,
   PlanetMapDefinition,
@@ -204,9 +208,10 @@ export class GlobeController {
     this.store.setState({ placingMode: false });
   }
 
-  flyTo(lng: number, lat: number, alt_m: number) {
+  flyTo(lng: number, lat: number, alt_m: number, options?: GlobeFlyOptions) {
     const r = 1 + alt_m / EARTH_RADIUS_M;
-    this.enginePortRef.current?.controls?.flyTo(lng, lat, r, 1800);
+    const duration = options?.duration ?? 1800;
+    this.enginePortRef.current?.controls?.flyTo(lng, lat, r, duration);
   }
 
   flyToMarker(id: string) {
@@ -214,6 +219,36 @@ export class GlobeController {
     if (marker) {
       this.flyTo(marker.lng, marker.lat, 1500);
     }
+  }
+
+  rotateBy(lngDelta: number, latDelta: number, options?: GlobeRotateOptions) {
+    const duration = options?.duration ?? 600;
+    this.enginePortRef.current?.controls?.rotateBy(lngDelta, latDelta, duration);
+  }
+
+  rotateTo(lng: number, lat: number, options?: GlobeRotateOptions) {
+    const duration = options?.duration ?? 600;
+    this.enginePortRef.current?.controls?.rotateTo(lng, lat, duration);
+  }
+
+  startAutoRotate(options?: GlobeAutoRotateOptions) {
+    const speed = options?.speed ?? 12;
+    this.enginePortRef.current?.controls?.startAutoRotate?.(speed);
+  }
+
+  stopAutoRotate() {
+    this.enginePortRef.current?.controls?.stopAutoRotate?.();
+  }
+
+  getView(): GlobeView {
+    const view = this.enginePortRef.current?.controls?.getView?.();
+    if (view) return view;
+    const { hud } = this.store.getState();
+    return {
+      lng: hud.focusLng,
+      lat: hud.focusLat,
+      altitudeMeters: hud.altitude,
+    };
   }
 
   updateHUD(hudData: GlobeState['hud']) {
