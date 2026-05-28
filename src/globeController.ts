@@ -214,6 +214,12 @@ export class GlobeController {
     this.enginePortRef.current?.controls?.flyTo(lng, lat, r, duration);
   }
 
+  flyToAltitude(alt_m: number, options?: GlobeFlyOptions) {
+    const r = 1 + alt_m / EARTH_RADIUS_M;
+    const duration = options?.duration ?? 1800;
+    this.enginePortRef.current?.controls?.flyToAltitude?.(r, duration);
+  }
+
   flyToMarker(id: string) {
     const marker = this.store.getState().markers.find((m) => m.id === id);
     if (marker) {

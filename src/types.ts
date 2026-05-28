@@ -123,6 +123,7 @@ export interface GlobeAutoRotateOptions {
 
 export interface GlobeControlsLike {
   flyTo(lng: number, lat: number, radius: number, duration?: number): void;
+  flyToAltitude?(radius: number, duration?: number): void;
   rotateBy(lngDelta: number, latDelta: number, duration?: number): void;
   rotateTo(lng: number, lat: number, duration?: number): void;
   startAutoRotate?(speedDegPerSec?: number): void;
@@ -168,6 +169,8 @@ export interface CartoonPlanetController {
   startPlacing(): void;
   cancelPlacing(): void;
   flyTo(lng: number, lat: number, altitudeMeters: number, options?: GlobeFlyOptions): void;
+  /** Zoom in or out while keeping the current heading. */
+  flyToAltitude(altitudeMeters: number, options?: GlobeFlyOptions): void;
   flyToMarker(id: string): void;
   /** Rotate the view by delta degrees on longitude and latitude axes. Altitude is unchanged. */
   rotateBy(lngDelta: number, latDelta: number, options?: GlobeRotateOptions): void;

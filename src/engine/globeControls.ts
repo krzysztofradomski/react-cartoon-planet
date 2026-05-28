@@ -5,6 +5,24 @@ import { lngLatToVec3, vec3ToLngLat } from './geo/math';
 import { EARTH_RADIUS_M } from '../globeController';
 import { MIN_RADIUS, MAX_RADIUS } from './constants/globeConstants';
 
+/** Avoid a 360° spin snapping the long way when homing after a full eastward rotation. */
+function resolveTargetTheta(from, to) {
+  let d = to - from;
+  if (Math.abs(d) < 1e-9) return to;
+  if (Math.abs(Math.abs(d) - 2 * Math.PI) < 0.05) return from;
+  let resolved = to;
+  d = resolved - from;
+  while (d > Math.PI) {
+    resolved -= 2 * Math.PI;
+    d = resolved - from;
+  }
+  while (d < -Math.PI) {
+    resolved += 2 * Math.PI;
+    d = resolved - from;
+  }
+  return resolved;
+}
+
 export class GlobeControls {
   constructor(camera, dom, onChange) {
     this.camera = camera;
@@ -82,6 +100,10 @@ export class GlobeControls {
     this._animateTo(radius, theta, phi, duration);
   }
 
+  flyToAltitude(radius, duration = 1500) {
+    this._animateTo(radius, this.targetTheta, this.targetPhi, duration);
+  }
+
   rotateBy(lngDelta, latDelta, duration = 600) {
     const theta = this.targetTheta + lngDelta * Math.PI / 180;
     const phi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - latDelta * Math.PI / 180));
@@ -125,11 +147,12 @@ export class GlobeControls {
       this._update(true);
       return;
     }
+    const toTheta = resolveTargetTheta(this.targetTheta, theta);
     this._anim = {
       t0: performance.now(),
       duration,
       from: { r: this.targetRadius, t: this.targetTheta, p: this.targetPhi },
-      to: { r: radius, t: theta, p: phi },
+      to: { r: radius, t: toTheta, p: phi },
     };
   }
 
