@@ -2,7 +2,7 @@
 
 Animated cartoon globe for React — zoom from orbit to ground level, switch visual styles, drop markers, and drive the camera from your own UI.
 
-<video src="https://raw.githubusercontent.com/radomski/react-cartoon-planet/main/media/demo.mp4" width="100%" autoplay loop muted playsinline></video>
+<video src="https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/demo.mp4" width="100%" autoplay loop muted playsinline></video>
 
 ## Install
 
@@ -64,10 +64,16 @@ export function GlobeDemo() {
   return (
     <div style={{ width: "100%", height: "100vh" }}>
       <header>
-        <button onClick={() => controllerRef.current?.flyTo(-74.006, 40.7128, 1_500)}>
+        <button
+          onClick={() => controllerRef.current?.flyTo(-74.006, 40.7128, 1_500)}
+        >
           Fly to NYC
         </button>
-        <button onClick={() => controllerRef.current?.rotateTo(0, 20, { duration: 900 })}>
+        <button
+          onClick={() =>
+            controllerRef.current?.rotateTo(0, 20, { duration: 900 })
+          }
+        >
           Reset view
         </button>
       </header>
@@ -97,7 +103,8 @@ export function GlobeDemo() {
       </CartoonPlanet>
 
       <footer>
-        lng {planetState?.hud.focusLng?.toFixed(2)}° · alt {planetState?.hud.scaleLabel}
+        lng {planetState?.hud.focusLng?.toFixed(2)}° · alt{" "}
+        {planetState?.hud.scaleLabel}
       </footer>
     </div>
   );
@@ -110,17 +117,17 @@ Give the canvas room to breathe — the globe fills its container (`width` / `he
 
 Four built-in styles ship out of the box. Switch them in the sidebar (`RenderModeControl`) or via `controller.setRenderMode("Cyber")`.
 
-| Solid | Dots |
-| --- | --- |
-| ![Solid render mode](https://raw.githubusercontent.com/radomski/react-cartoon-planet/main/media/solid-big.png) | ![Dots render mode](https://raw.githubusercontent.com/radomski/react-cartoon-planet/main/media/dots-big.png) |
+| Solid                                                                                                                              | Dots                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| ![Solid render mode](https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/solid-big.png) | ![Dots render mode](https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/dots-big.png) |
 
-| Hybrid | Cyber |
-| --- | --- |
-| ![Hybrid render mode](https://raw.githubusercontent.com/radomski/react-cartoon-planet/main/media/hybrid-big.png) | ![Cyber render mode](https://raw.githubusercontent.com/radomski/react-cartoon-planet/main/media/cyber-big.png) |
+| Hybrid                                                                                                                               | Cyber                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| ![Hybrid render mode](https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/hybrid-big.png) | ![Cyber render mode](https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/cyber-big.png) |
 
 Cyber mode in motion:
 
-<video src="https://raw.githubusercontent.com/radomski/react-cartoon-planet/main/media/cyber-short.mp4" width="100%" autoplay loop muted playsinline></video>
+<video src="https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/cyber-short.mp4" width="100%" autoplay loop muted playsinline></video>
 
 Presets: `SURFACE_RENDER_MODE` (Solid), `DOTS_RENDER_MODE`, `HYBRID_RENDER_MODE`, `CYBERPUNK_RENDER_MODE`, or the full `BUILTIN_RENDER_MODES` array.
 
@@ -131,26 +138,37 @@ Presets: `SURFACE_RENDER_MODE` (Solid), `DOTS_RENDER_MODE`, `HYBRID_RENDER_MODE`
 
 Pass your own `PlanetMapDefinition` with a GeoJSON URL, or pre-parsed `continents` to skip the fetch. Use `flattenGeoJsonToContinents` if you already have GeoJSON in memory.
 
+### Map data sources
+
+Bundled land/maria geometry comes from third-party datasets. Full attribution, download URLs, and processing notes:
+
+**[Geospatial data sources](https://github.com/krzysztofradomski/react-cartoon-planet/blob/main/mvp/data/geospatial/source.md)** (`mvp/data/geospatial/source.md`)
+
+| File | Origin |
+| --- | --- |
+| `earth-land.geojson` | [Natural Earth](https://www.naturalearthdata.com/) `ne_110m_land` — [source GeoJSON](https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson) (Public Domain) |
+| `moon-maria.geojson` | [LROC Global Mare](https://pds.lroc.wisc.edu/) boundaries — converted from the official shapefile ZIP with `shpjs` |
+
 ## Controller API
 
 Attach a ref (`useRef<CartoonPlanetController>()`) or use `onReady` to get the controller.
 
-| Method | Description |
-| --- | --- |
-| `flyTo(lng, lat, altitudeMeters, options?)` | Animated camera move (default 1800 ms) |
-| `flyToAltitude(altitudeMeters, options?)` | Zoom in/out at current heading |
-| `flyToMarker(id)` | Fly to a marker by id |
-| `rotateBy(lngDelta, latDelta, options?)` | Nudge heading (default 600 ms) |
-| `rotateTo(lng, lat, options?)` | Absolute heading at current altitude |
-| `startAutoRotate` / `stopAutoRotate` | Continuous spin |
-| `getView()` | Current `{ lng, lat, altitudeMeters }` |
-| `setRenderMode(mode)` | Switch visual style (name or definition) |
-| `setPlanetMap(map)` | Switch planet map |
-| `setStartView("globe" \| "ground")` | Orbit vs near-ground preset |
-| `setMarkers` / `addMarker` / `removeMarker` | Marker CRUD |
-| `startPlacing` / `cancelPlacing` | Click-to-place marker mode |
-| `setLinksEnabled(boolean)` | Toggle marker link lines |
-| `getState()` / `subscribe(listener)` | Reactive globe state |
+| Method                                      | Description                              |
+| ------------------------------------------- | ---------------------------------------- |
+| `flyTo(lng, lat, altitudeMeters, options?)` | Animated camera move (default 1800 ms)   |
+| `flyToAltitude(altitudeMeters, options?)`   | Zoom in/out at current heading           |
+| `flyToMarker(id)`                           | Fly to a marker by id                    |
+| `rotateBy(lngDelta, latDelta, options?)`    | Nudge heading (default 600 ms)           |
+| `rotateTo(lng, lat, options?)`              | Absolute heading at current altitude     |
+| `startAutoRotate` / `stopAutoRotate`        | Continuous spin                          |
+| `getView()`                                 | Current `{ lng, lat, altitudeMeters }`   |
+| `setRenderMode(mode)`                       | Switch visual style (name or definition) |
+| `setPlanetMap(map)`                         | Switch planet map                        |
+| `setStartView("globe" \| "ground")`         | Orbit vs near-ground preset              |
+| `setMarkers` / `addMarker` / `removeMarker` | Marker CRUD                              |
+| `startPlacing` / `cancelPlacing`            | Click-to-place marker mode               |
+| `setLinksEnabled(boolean)`                  | Toggle marker link lines                 |
+| `getState()` / `subscribe(listener)`        | Reactive globe state                     |
 
 `onStateChange` on `<CartoonPlanet>` is the React-friendly alternative to `subscribe`.
 
@@ -158,19 +176,19 @@ Attach a ref (`useRef<CartoonPlanetController>()`) or use `onReady` to get the c
 
 Sidebar panels and HUD widgets are optional React children — include only what you need:
 
-| Component | Role |
-| --- | --- |
-| `FpsDisplay` | Frame rate |
-| `AltitudeDisplay` | Current altitude |
-| `ScaleBarDisplay` | Map scale bar |
-| `MarkerLabelsDisplay` | Screen-space marker labels |
-| `PlacingToastDisplay` | “Click globe to place” hint |
-| `HintDisplay` | Interaction hints |
-| `StartLevelControl` | Globe / ground start level |
-| `PlanetMapControl` | Earth / Moon (or custom maps) |
-| `RenderModeControl` | Style picker |
-| `QuickJumpControl` | Preset locations |
-| `MarkerManagerControl` | Add / remove markers |
+| Component                | Role                           |
+| ------------------------ | ------------------------------ |
+| `FpsDisplay`             | Frame rate                     |
+| `AltitudeDisplay`        | Current altitude               |
+| `ScaleBarDisplay`        | Map scale bar                  |
+| `MarkerLabelsDisplay`    | Screen-space marker labels     |
+| `PlacingToastDisplay`    | “Click globe to place” hint    |
+| `HintDisplay`            | Interaction hints              |
+| `StartLevelControl`      | Globe / ground start level     |
+| `PlanetMapControl`       | Earth / Moon (or custom maps)  |
+| `RenderModeControl`      | Style picker                   |
+| `QuickJumpControl`       | Preset locations               |
+| `MarkerManagerControl`   | Add / remove markers           |
 | `CartoonPlanetDefaultUi` | All of the above in one bundle |
 
 If you pass `children`, the legacy `ui={{ … }}` prop is ignored. Without children, every built-in panel stays off unless you opt in via `ui`.
@@ -197,17 +215,17 @@ const MY_MODE: GlobeRenderModeDefinition = {
 
 ## Props
 
-| Prop | Type | Notes |
-| --- | --- | --- |
-| `maps` | `PlanetMapDefinition[]` | Defaults to Earth + Moon |
-| `renderModes` | `GlobeRenderModeDefinition[]` | Defaults to all four built-ins |
-| `initialState` | `CartoonPlanetInitialState` | Map, mode, start view, markers |
-| `onStateChange` | `(state: GlobeState) => void` | HUD, fps, active map/mode |
-| `onReady` | `(controller) => void` | Fires when engine is ready |
-| `className` / `style` | — | Root container |
-| `children` | React nodes | Composable UI (see above) |
+| Prop                  | Type                          | Notes                          |
+| --------------------- | ----------------------------- | ------------------------------ |
+| `maps`                | `PlanetMapDefinition[]`       | Defaults to Earth + Moon       |
+| `renderModes`         | `GlobeRenderModeDefinition[]` | Defaults to all four built-ins |
+| `initialState`        | `CartoonPlanetInitialState`   | Map, mode, start view, markers |
+| `onStateChange`       | `(state: GlobeState) => void` | HUD, fps, active map/mode      |
+| `onReady`             | `(controller) => void`        | Fires when engine is ready     |
+| `className` / `style` | —                             | Root container                 |
+| `children`            | React nodes                   | Composable UI (see above)      |
 
-## Live demo
+## Demo app incuded
 
 The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes.
 
@@ -217,9 +235,9 @@ cd demo-app && pnpm install && pnpm dev
 
 ## Links
 
-- [Homepage](https://radomski.dev/react-cartoon-planet)
-- [Repository](https://github.com/radomski/react-cartoon-planet)
-- [Issues](https://github.com/radomski/react-cartoon-planet/issues)
+- [Live demo online](https://react-cartoon-planet.paperplane.builders)
+- [Repository](https://github.com/krzysztofradomski/react-cartoon-planet)
+- [Issues](https://github.com/krzysztofradomski/react-cartoon-planet/issues)
 
 ## License
 
