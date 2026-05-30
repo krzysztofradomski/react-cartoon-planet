@@ -48,6 +48,8 @@ export interface Marker {
   isCluster?: boolean;
   clusterCount?: number;
   memberIds?: string[];
+  /** Altitude (m) that frames this cluster's members when flown to. */
+  frameAltitudeM?: number;
   isOrbital?: boolean;
   altitude?: number;
   orbitNodeA?: string;
@@ -73,6 +75,7 @@ export interface MarkerLabel {
   lng?: number;
   lat?: number;
   isCluster?: boolean;
+  frameAltitudeM?: number;
 }
 
 export interface GlobeState {

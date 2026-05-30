@@ -459,6 +459,7 @@ export function projectMarkerLabels(markerGroup, camera, canvas) {
       lng: marker.lng,
       lat: marker.lat,
       isCluster: !!marker.isCluster,
+      frameAltitudeM: marker.frameAltitudeM,
       x: (_anchorTemp.x * 0.5 + 0.5) * w,
       y: (-_anchorTemp.y * 0.5 + 0.5) * h,
       visible,

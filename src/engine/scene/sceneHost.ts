@@ -8,6 +8,7 @@ import { buildMarkers, orientToSurface, projectMarkerLabels, findMarkerFromObjec
 import { resolveDisplayMarkers } from '../markers/markerDisplay';
 import { metersPerPixel } from '../geo/distance';
 import { outlineWidthForAltitude, vec3ToLngLat, hash } from '../geo/math';
+import { R_LAND } from '../constants/globeConstants';
 import { EARTH_RADIUS_M, START_VIEWS, GlobeController } from '../../globeController';
 import type { StartViewId } from '../../types';
 import { SURFACE_RENDER_MODE } from '../../presets/builtinRenderModes';
@@ -20,6 +21,8 @@ const _vOrbUp = new THREE.Vector3();
 const _vOrbPos = new THREE.Vector3();
 const _qOrb = new THREE.Quaternion();
 const _vAxisZ = new THREE.Vector3(0, 0, 1);
+const _placeSphere = new THREE.Sphere(undefined, R_LAND);
+const _placeHit = new THREE.Vector3();
 
 function disposeObject3D(child) {
   child.traverse((o) => {
@@ -92,9 +95,15 @@ export function attachGlobeScene({
   let lastMarkerDisplayKey = '';
 
   function markerDisplayKey(rawMarkers, altM, mpp) {
-    const tier =
-      altM <= 80_000 ? 'spread' : mpp <= 50 ? 'cluster-tight' : mpp <= 500 ? 'cluster-mid' : 'cluster-wide';
-    return `${rawMarkers.length}:${tier}:${Math.round(altM / 1000)}:${Math.round(mpp)}`;
+    // Only rebuild when the resolved set can actually change: entering the
+    // ground "spread" regime, or crossing an octave of meters-per-pixel (which
+    // is what drives cluster membership). Per-frame size/position is handled by
+    // updateMarkerVisualScale, so we must NOT key on raw altitude/mpp — doing so
+    // rebuilt geometry almost every frame during a fly and starved the camera
+    // animation, making zoom-to-ground crawl.
+    if (altM <= 80_000) return `${rawMarkers.length}:spread`;
+    const mppOctave = Math.round(Math.log2(Math.max(1, mpp)));
+    return `${rawMarkers.length}:cluster:${mppOctave}`;
   }
 
   let controls;
@@ -241,7 +250,7 @@ export function attachGlobeScene({
   function handleMarkerPick(marker) {
     if (!marker) return;
     if (marker.isCluster) {
-      controller.flyTo(marker.lng, marker.lat, 450);
+      controller.flyTo(marker.lng, marker.lat, marker.frameAltitudeM ?? 450);
       return;
     }
     controller.flyToMarker(marker.id);
@@ -272,12 +281,12 @@ export function attachGlobeScene({
       return;
     }
 
-    const intersects = raycaster.intersectObjects(surfaceGroup.children, true);
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
-      const surfacePos = point.clone().normalize();
-      const { lat, lng } = vec3ToLngLat(surfacePos);
-
+    // Analytic ray↔unit-sphere intersection gives the exact lng/lat under the
+    // cursor at any altitude (precise to the surface even at ~5m ground level).
+    // To place precisely between markers that are metres apart, zoom in — at
+    // altitude one pixel spans kilometres, so there is no sub-pixel "between".
+    if (raycaster.ray.intersectSphere(_placeSphere, _placeHit)) {
+      const { lng, lat } = vec3ToLngLat(_placeHit);
       if (enginePortRef.current?.onGlobeClick) {
         enginePortRef.current.onGlobeClick(lng, lat);
       }

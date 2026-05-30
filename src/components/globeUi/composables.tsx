@@ -221,9 +221,9 @@ function MarkerManagerPanel({
 }) {
   const [editorData, setEditorData] = useState<{ lat: number; lng: number } | null>(null);
   const [label, setLabel] = useState('');
-  const [shape, setShape] = useState<MarkerShape>('orb');
+  const [shape, setShape] = useState<MarkerShape>('icon');
   const [color, setColor] = useState('#ff5e3a');
-  const [size, setSize] = useState(0.024);
+  const [size, setSize] = useState(0.03);
   const [isOrbital, setIsOrbital] = useState(false);
   const [orbitAlt, setOrbitAlt] = useState(1.18);
   const [nodeA, setNodeA] = useState('');
@@ -245,7 +245,8 @@ function MarkerManagerPanel({
       setEditorData({ lat, lng });
       setLabel(`Marker at ${lat.toFixed(1)}°, ${lng.toFixed(1)}°`);
       setPlacingMode(false);
-      setSize(0.024);
+      setShape('icon');
+      setSize(0.03);
       setIsOrbital(false);
       setOrbitAlt(1.18);
       const availableNodes = markers.filter((m) => !m.isOrbital);
@@ -609,7 +610,7 @@ export const MarkerLabelsDisplay = assignCartoonPlanetSlot('root', function Mark
               style={{ left: marker.x, top: marker.y }}
               onClick={() => {
                 if (marker.isCluster && marker.lng != null && marker.lat != null) {
-                  controller.flyTo(marker.lng, marker.lat, 450);
+                  controller.flyTo(marker.lng, marker.lat, marker.frameAltitudeM ?? 450);
                 } else {
                   controller.flyToMarker(marker.id);
                 }
