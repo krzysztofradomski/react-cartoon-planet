@@ -228,6 +228,13 @@ function MarkerManagerPanel({
   const [orbitAlt, setOrbitAlt] = useState(1.18);
   const [nodeA, setNodeA] = useState('');
   const [nodeB, setNodeB] = useState('');
+  // Id of the marker being previewed live on the map while the editor is open.
+  const [draftId, setDraftId] = useState<string | null>(null);
+
+  // Always-fresh handle on the marker list so click/sync callbacks don't capture
+  // a stale array.
+  const markersRef = useRef(markers);
+  markersRef.current = markers;
 
   const colorPresets = [
     { value: '#ff2eea', label: 'Magenta' },
@@ -242,6 +249,8 @@ function MarkerManagerPanel({
     const port = enginePortRef.current;
     if (!port) return;
     port.onGlobeClick = (lng, lat) => {
+      // Drop the marker on the map right away; the editor then tweaks it live.
+      setDraftId('custom_' + Date.now());
       setEditorData({ lat, lng });
       setLabel(`Marker at ${lat.toFixed(1)}°, ${lng.toFixed(1)}°`);
       setPlacingMode(false);
@@ -249,7 +258,7 @@ function MarkerManagerPanel({
       setSize(0.03);
       setIsOrbital(false);
       setOrbitAlt(1.18);
-      const availableNodes = markers.filter((m) => !m.isOrbital);
+      const availableNodes = markersRef.current.filter((m) => !m.isOrbital);
       if (availableNodes.length >= 2) {
         setNodeA(availableNodes[0].id);
         setNodeB(availableNodes[1].id);
@@ -263,21 +272,16 @@ function MarkerManagerPanel({
         port.onGlobeClick = null;
       }
     };
-  }, [enginePortRef, setPlacingMode, markers]);
+  }, [enginePortRef, setPlacingMode]);
 
-  function handleAddClick() {
-    setEditorData(null);
-    setPlacingMode(true);
-  }
-
-  function handleCancelPlacing() {
-    setPlacingMode(false);
-  }
-
-  function handleSave() {
-    if (!editorData) return;
-    const newMarker: Marker = {
-      id: 'custom_' + Date.now(),
+  // Live preview: keep the draft marker in the real markers list and re-sync it
+  // whenever any editor field changes, so size/label/color/shape update on the
+  // map in real time. Save just stops editing (the marker is already there);
+  // Cancel removes it.
+  useEffect(() => {
+    if (!editorData || !draftId) return;
+    const draft: Marker = {
+      id: draftId,
       label: label.trim() || `Marker at ${editorData.lat.toFixed(1)}°, ${editorData.lng.toFixed(1)}°`,
       lng: editorData.lng,
       lat: editorData.lat,
@@ -289,8 +293,35 @@ function MarkerManagerPanel({
       orbitNodeA: isOrbital ? nodeA : '',
       orbitNodeB: isOrbital ? nodeB : '',
     };
-    setMarkers([...markers, newMarker]);
+    const list = markersRef.current;
+    setMarkers(
+      list.some((m) => m.id === draftId)
+        ? list.map((m) => (m.id === draftId ? draft : m))
+        : [...list, draft]
+    );
+    // markersRef is read (not a dep) on purpose so this only fires on field edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorData, draftId, label, shape, color, size, isOrbital, orbitAlt, nodeA, nodeB]);
+
+  function handleAddClick() {
     setEditorData(null);
+    setPlacingMode(true);
+  }
+
+  function handleCancelPlacing() {
+    setPlacingMode(false);
+  }
+
+  function handleSave() {
+    // The draft is already on the map — finalising just closes the editor.
+    setEditorData(null);
+    setDraftId(null);
+  }
+
+  function handleCancelEdit() {
+    if (draftId) setMarkers(markersRef.current.filter((m) => m.id !== draftId));
+    setEditorData(null);
+    setDraftId(null);
   }
 
   function handleDelete(id: string) {
@@ -537,7 +568,7 @@ function MarkerManagerPanel({
           )}
 
           <div className="marker-editor-actions">
-            <button type="button" className="marker-item-btn marker-editor-btn" onClick={() => setEditorData(null)}>
+            <button type="button" className="marker-item-btn marker-editor-btn" onClick={handleCancelEdit}>
               Cancel
             </button>
             <button type="button" className="marker-item-btn marker-editor-btn marker-editor-btn-save" onClick={handleSave}>
