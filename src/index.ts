@@ -22,6 +22,7 @@ export type {
   StartViewId,
 } from './CartoonPlanet';
 export { START_VIEWS } from './globeController';
+export { DEFAULT_MARKERS, WARSAW_BUG_MARKERS } from './types';
 export {
   BUILTIN_MAPS,
   EARTH_MAP,

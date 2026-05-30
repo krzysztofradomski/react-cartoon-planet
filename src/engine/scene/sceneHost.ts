@@ -4,7 +4,9 @@ import * as THREE from 'three';
 import { GlobeControls } from '../globeControls';
 import { buildPlanetSurface } from '../builders/planetSurface';
 import { buildStarfield } from '../builders/starfield';
-import { buildMarkers, orientToSurface, projectMarkerLabels } from '../builders/markers';
+import { buildMarkers, orientToSurface, projectMarkerLabels, findMarkerFromObject, updateMarkerVisualScale } from '../builders/markers';
+import { resolveDisplayMarkers } from '../markers/markerDisplay';
+import { metersPerPixel } from '../geo/distance';
 import { outlineWidthForAltitude, vec3ToLngLat, hash } from '../geo/math';
 import { EARTH_RADIUS_M, START_VIEWS, GlobeController } from '../../globeController';
 import type { StartViewId } from '../../types';
@@ -87,14 +89,44 @@ export function attachGlobeScene({
     return surfaceGroup.userData.mode || controller.getState().renderMode;
   }
 
-  function rebuildMarkers(nextMarkers = controller.getState().markers, modeName = currentRenderModeName()) {
+  let lastMarkerDisplayKey = '';
+
+  function markerDisplayKey(rawMarkers, altM, mpp) {
+    const tier =
+      altM <= 80_000 ? 'spread' : mpp <= 50 ? 'cluster-tight' : mpp <= 500 ? 'cluster-mid' : 'cluster-wide';
+    return `${rawMarkers.length}:${tier}:${Math.round(altM / 1000)}:${Math.round(mpp)}`;
+  }
+
+  let controls;
+
+  function getViewMetrics() {
+    const screenW = renderer.domElement.clientWidth || 800;
+    if (controls) {
+      const altM = (controls.radius - 1) * EARTH_RADIUS_M;
+      return { altM, mpp: metersPerPixel(controls.radius, camera, screenW) };
+    }
+    const start = START_VIEWS[startView] || START_VIEWS.globe;
+    return { altM: start.alt_m, mpp: start.alt_m / screenW };
+  }
+
+  function rebuildMarkers(
+    nextMarkers = controller.getState().markers,
+    modeName = currentRenderModeName(),
+    altM,
+    mpp
+  ) {
+    const metrics = getViewMetrics();
+    const resolvedAlt = altM ?? metrics.altM;
+    const resolvedMpp = mpp ?? metrics.mpp;
     while (markerRoot.children.length) {
       const child = markerRoot.children.pop();
       disposeObject3D(child);
     }
     const modeObj = renderCatalog.get(modeName);
     const markerMode = modeObj?.getMarkerMode ? modeObj.getMarkerMode() : 'surface';
-    const markerGroup = buildMarkers(nextMarkers, markerMode, controller.getState().linksEnabled);
+    const displayMarkers = resolveDisplayMarkers(nextMarkers, resolvedAlt, resolvedMpp);
+    lastMarkerDisplayKey = markerDisplayKey(nextMarkers, resolvedAlt, resolvedMpp);
+    const markerGroup = buildMarkers(displayMarkers, markerMode, controller.getState().linksEnabled);
     markerRoot.add(markerGroup);
     markerRoot.userData.markerGroup = markerGroup;
   }
@@ -187,12 +219,13 @@ export function attachGlobeScene({
   const stars = buildStarfield();
   scene.add(stars);
 
-  const controls = new GlobeControls(camera, renderer.domElement);
+  const controlsInstance = new GlobeControls(camera, renderer.domElement);
+  controls = controlsInstance;
   const initialView = START_VIEWS[startView] || START_VIEWS.globe;
-  controls.jumpTo(initialView.lng, initialView.lat, 1 + initialView.alt_m / EARTH_RADIUS_M);
+  controlsInstance.jumpTo(initialView.lng, initialView.lat, 1 + initialView.alt_m / EARTH_RADIUS_M);
 
   bindEnginePort(enginePortRef, {
-    controls,
+    controls: controlsInstance,
     setRenderMode: (mode) => rebuildSurface(surfaceGroup.userData.outlinePx || 12, mode),
     rebuildPlanetMap: () => {
       rebuildContinents();
@@ -200,13 +233,21 @@ export function attachGlobeScene({
     },
     setMarkers: (nextMarkers) => {
       const list = Array.isArray(nextMarkers) ? nextMarkers : [];
-      rebuildMarkers(list, surfaceGroup.userData.mode);
+      const { altM, mpp } = getViewMetrics();
+      rebuildMarkers(list, surfaceGroup.userData.mode, altM, mpp);
     },
   });
 
-  function handleCanvasClick(e) {
-    if (!enginePortRef.current?.isPlacingMode) return;
+  function handleMarkerPick(marker) {
+    if (!marker) return;
+    if (marker.isCluster) {
+      controller.flyTo(marker.lng, marker.lat, 450);
+      return;
+    }
+    controller.flyToMarker(marker.id);
+  }
 
+  function handleCanvasClick(e) {
     const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -215,6 +256,21 @@ export function attachGlobeScene({
 
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mouse, camera);
+
+    if (!enginePortRef.current?.isPlacingMode) {
+      const markerGroup = markerRoot.userData.markerGroup;
+      if (markerGroup) {
+        const markerHits = raycaster.intersectObjects(markerGroup.children, true);
+        for (const hit of markerHits) {
+          const marker = findMarkerFromObject(hit.object);
+          if (marker) {
+            handleMarkerPick(marker);
+            return;
+          }
+        }
+      }
+      return;
+    }
 
     const intersects = raycaster.intersectObjects(surfaceGroup.children, true);
     if (intersects.length > 0) {
@@ -247,23 +303,43 @@ export function attachGlobeScene({
   let raf;
   let fpsFrameCount = 0;
   let fpsLastSample = performance.now();
+  let fpsSmoothed = 0;
 
   function tick() {
     fpsFrameCount++;
     const fpsNow = performance.now();
-    if (fpsNow - fpsLastSample >= 500) {
-      const fps = Math.round((fpsFrameCount * 1000) / (fpsNow - fpsLastSample));
+    const fpsElapsed = fpsNow - fpsLastSample;
+    if (fpsElapsed >= 500) {
+      // Smooth across samples so a single stalled window (GC pause, marker
+      // rebuild, or an external GPU readback) doesn't flash a misleading number.
+      const instant = (fpsFrameCount * 1000) / fpsElapsed;
+      fpsSmoothed = fpsSmoothed > 0 ? fpsSmoothed * 0.6 + instant * 0.4 : instant;
       fpsFrameCount = 0;
       fpsLastSample = fpsNow;
-      controller.updateFps(fps);
+      controller.updateFps(Math.round(fpsSmoothed));
     }
     try {
-      controls.tick();
-      const alt = (controls.radius - 1) * EARTH_RADIUS_M;
+      controlsInstance.tick();
+      const alt = (controlsInstance.radius - 1) * EARTH_RADIUS_M;
       const nextOutlinePx = outlineWidthForAltitude(alt);
       if (surfaceGroup.userData.mode === SURFACE_RENDER_MODE.name && nextOutlinePx !== surfaceGroup.userData.outlinePx) {
         rebuildSurface(nextOutlinePx, surfaceGroup.userData.mode);
       }
+
+      const screenW = renderer.domElement.clientWidth || 800;
+      const mpp = metersPerPixel(controlsInstance.radius, camera, screenW);
+      const rawMarkers = controller.getState().markers;
+      const nextMarkerKey = markerDisplayKey(rawMarkers, alt, mpp);
+      if (nextMarkerKey !== lastMarkerDisplayKey) {
+        rebuildMarkers(rawMarkers, surfaceGroup.userData.mode, alt, mpp);
+      }
+
+      updateMarkerVisualScale(
+        markerRoot.userData.markerGroup,
+        alt,
+        camera,
+        renderer.domElement.clientHeight || 800
+      );
 
       const dir = camera.position.clone().normalize();
       const surface = dir.clone().multiplyScalar(1.0);
@@ -361,7 +437,7 @@ export function attachGlobeScene({
         projectMarkerLabels(markerRoot.userData.markerGroup, camera, renderer.domElement)
       );
 
-      const scaleBarLabel = formatScaleBar(controls.radius, camera, renderer.domElement.clientWidth);
+      const scaleBarLabel = formatScaleBar(controlsInstance.radius, camera, renderer.domElement.clientWidth);
       controller.updateHUD({
         altitude: alt,
         focusLat: lat,

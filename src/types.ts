@@ -1,7 +1,7 @@
 import type { Group } from 'three';
 
 export type StartViewId = 'globe' | 'ground';
-export type MarkerShape = 'orb' | 'cube' | 'bar';
+export type MarkerShape = 'orb' | 'cube' | 'bar' | 'icon' | 'cluster';
 
 /** GeoJSON or other map source referenced by local or remote URL. */
 export interface PlanetMapDefinition {
@@ -42,6 +42,12 @@ export interface Marker {
   color?: string;
   size?: number;
   height?: number;
+  /** Emoji or short label rendered as a billboard icon (shape defaults to icon). */
+  icon?: string;
+  /** Set on aggregated cluster markers at high altitude. */
+  isCluster?: boolean;
+  clusterCount?: number;
+  memberIds?: string[];
   isOrbital?: boolean;
   altitude?: number;
   orbitNodeA?: string;
@@ -64,6 +70,9 @@ export interface MarkerLabel {
   x: number;
   y: number;
   visible: boolean;
+  lng?: number;
+  lat?: number;
+  isCluster?: boolean;
 }
 
 export interface GlobeState {
@@ -240,4 +249,35 @@ export const DEFAULT_MARKERS: Marker[] = [
   { id: 'london', label: 'London cube', lng: -0.1276, lat: 51.5072, shape: 'cube', color: '#f3ead2', size: 0.026 },
   { id: 'tokyo', label: 'Tokyo tower', lng: 139.6917, lat: 35.6895, shape: 'bar', color: '#39ffd7', size: 0.02, height: 0.07 },
   { id: 'sydney', label: 'Sydney orb', lng: 151.2093, lat: -33.8688, shape: 'orb', color: '#b36cff', size: 0.023 },
+];
+
+/** Sample pests within ~2 m of each other — for clustering / spread demos. */
+export const WARSAW_BUG_MARKERS: Marker[] = [
+  {
+    id: 'warsaw-ladybug',
+    label: 'Ladybug',
+    lng: 21.0122,
+    lat: 52.2297,
+    shape: 'icon',
+    color: '#d32f2f',
+    size: 0.03,
+  },
+  {
+    id: 'warsaw-mosquito',
+    label: 'Mosquito',
+    lng: 21.0122146,
+    lat: 52.229709,
+    shape: 'icon',
+    color: '#607d8b',
+    size: 0.03,
+  },
+  {
+    id: 'warsaw-hornet',
+    label: 'Hornet',
+    lng: 21.012205,
+    lat: 52.229718,
+    shape: 'icon',
+    color: '#f9a825',
+    size: 0.03,
+  },
 ];

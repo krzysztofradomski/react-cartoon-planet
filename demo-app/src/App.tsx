@@ -17,6 +17,7 @@ import {
   RenderModeControl,
   ScaleBarDisplay,
   StartLevelControl,
+  START_VIEWS,
   SURFACE_RENDER_MODE,
 } from "react-cartoon-planet";
 import type {
@@ -24,17 +25,23 @@ import type {
   CartoonPlanetInitialState,
   GlobeRenderModeDefinition,
   GlobeState,
+  Marker,
   PlanetMapDefinition,
 } from "react-cartoon-planet";
+import { DEFAULT_MARKERS, WARSAW_BUG_MARKERS } from "react-cartoon-planet";
 import { playIntro } from "./playIntro";
 
 const DEMO_MAPS: PlanetMapDefinition[] = [EARTH_MAP, MOON_MAP];
 const DEMO_RENDER_MODES: GlobeRenderModeDefinition[] = BUILTIN_RENDER_MODES;
 
+const DEMO_MARKERS: Marker[] = [...DEFAULT_MARKERS, ...WARSAW_BUG_MARKERS];
+
 const DEMO_INITIAL_STATE: CartoonPlanetInitialState = {
   map: EARTH_MAP,
   renderMode: SURFACE_RENDER_MODE,
   startView: "globe",
+  markers: DEMO_MARKERS,
+  linksEnabled: false,
 };
 
 function formatCoord(value: number | undefined, suffix: string) {
@@ -118,7 +125,20 @@ function App() {
             <button
               type="button"
               onClick={() =>
-                controllerRef.current?.rotateTo(0, 20, { duration: 900 })
+                controllerRef.current?.flyTo(21.0122, 52.2297, 6)
+              }
+            >
+              Warsaw bugs
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                controllerRef.current?.flyTo(
+                  START_VIEWS.globe.lng,
+                  START_VIEWS.globe.lat,
+                  START_VIEWS.globe.alt_m,
+                  { duration: 900 }
+                )
               }
             >
               Reset view

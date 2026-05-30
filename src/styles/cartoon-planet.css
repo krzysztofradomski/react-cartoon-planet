@@ -162,6 +162,17 @@
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
+    .marker-label-btn {
+      pointer-events: auto;
+      cursor: pointer;
+      font: inherit;
+      appearance: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .marker-label-btn:hover {
+      border-color: rgba(255,255,255,0.28);
+      background: rgba(18, 26, 40, 0.92);
+    }
     .marker-swatch {
       width: 8px;
       height: 8px;

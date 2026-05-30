@@ -596,16 +596,29 @@ export const ScaleBarDisplay = assignCartoonPlanetSlot('root', function ScaleBar
 });
 
 export const MarkerLabelsDisplay = assignCartoonPlanetSlot('root', function MarkerLabelsDisplay() {
-  const { globeState } = useCartoonPlanet();
+  const { globeState, controller } = useCartoonPlanet();
   return (
     <div className="marker-layer" aria-hidden="true">
       {globeState.markerLabels.map(
         (marker) =>
           marker.visible && (
-            <div key={marker.id} className="marker-label" style={{ left: marker.x, top: marker.y }}>
+            <button
+              key={marker.id}
+              type="button"
+              className="marker-label marker-label-btn"
+              style={{ left: marker.x, top: marker.y }}
+              onClick={() => {
+                if (marker.isCluster && marker.lng != null && marker.lat != null) {
+                  controller.flyTo(marker.lng, marker.lat, 450);
+                } else {
+                  controller.flyToMarker(marker.id);
+                }
+              }}
+              title={`Fly to ${marker.label}`}
+            >
               <span className="marker-swatch" style={{ color: marker.color, background: marker.color }} />
               <span className="marker-text">{marker.label}</span>
-            </div>
+            </button>
           )
       )}
     </div>

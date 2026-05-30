@@ -25,7 +25,9 @@ export const START_VIEWS = {
   ground: { lng: 0, lat: 20, alt_m: 1_500 },
 } as const;
 
-export const EARTH_RADIUS_M = 6_371_000;
+import { EARTH_RADIUS_M } from './engine/constants/globeConstants';
+
+export { EARTH_RADIUS_M };
 
 export type GlobeControllerOptions = {
   initialState?: CartoonPlanetInitialState;
@@ -222,9 +224,13 @@ export class GlobeController {
 
   flyToMarker(id: string) {
     const marker = this.store.getState().markers.find((m) => m.id === id);
-    if (marker) {
-      this.flyTo(marker.lng, marker.lat, 1500);
-    }
+    if (!marker) return;
+    const isSmall =
+      marker.shape === 'icon' || (marker.size != null && marker.size <= 0.012);
+    // Small ground-level markers (e.g. individual pests) drop almost to the
+    // surface so the screen-constant pins read as distinct individuals.
+    const alt = isSmall ? 6 : 1500;
+    this.flyTo(marker.lng, marker.lat, alt);
   }
 
   rotateBy(lngDelta: number, latDelta: number, options?: GlobeRotateOptions) {

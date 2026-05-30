@@ -128,10 +128,15 @@ export function hash(x, y) {
 }
 
 export function outlineWidthForAltitude(alt_m) {
-  if (alt_m < 2_000) return 84;
-  if (alt_m < 20_000) return 64;
-  if (alt_m < 200_000) return 44;
-  if (alt_m < 1_000_000) return 28;
-  if (alt_m < 4_000_000) return 18;
+  // Outlines are baked into a fixed-resolution (4096px) texture, so a stroke's
+  // pixel width maps to a constant *geographic* width (~10km per pixel). When the
+  // camera drops to ground level it views a sub-kilometre patch — a single texel
+  // magnified — so a fat stroke paints the whole screen with the near-black
+  // outline colour. Earlier tiers escalated to 84px (~500km, ±250km reach), which
+  // swallowed inland cities like Warsaw into a black screen. Magnification already
+  // makes a thin stroke read as a bold cartoon coastline up close, so keep the
+  // width modest and bounded (≤16px ≈ ±80km) across all zoom levels.
+  if (alt_m < 200_000) return 16;
+  if (alt_m < 4_000_000) return 14;
   return 12;
 }

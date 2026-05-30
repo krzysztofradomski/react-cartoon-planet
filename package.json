@@ -21,6 +21,8 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test:geo": "node --experimental-strip-types scripts/test-geo.ts",
+    "test:markers": "node --experimental-strip-types scripts/test-markers.ts",
+    "test": "npm run test:geo && npm run test:markers",
     "prepare": "npm run build"
   },
   "author": "hello@radomski.dev",
