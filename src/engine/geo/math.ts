@@ -128,15 +128,19 @@ export function hash(x, y) {
 }
 
 export function outlineWidthForAltitude(alt_m) {
-  // Outlines are baked into a fixed-resolution (4096px) texture, so a stroke's
-  // pixel width maps to a constant *geographic* width (~10km per pixel). When the
-  // camera drops to ground level it views a sub-kilometre patch — a single texel
-  // magnified — so a fat stroke paints the whole screen with the near-black
-  // outline colour. Earlier tiers escalated to 84px (~500km, ±250km reach), which
-  // swallowed inland cities like Warsaw into a black screen. Magnification already
-  // makes a thin stroke read as a bold cartoon coastline up close, so keep the
-  // width modest and bounded (≤16px ≈ ±80km) across all zoom levels.
-  if (alt_m < 200_000) return 16;
-  if (alt_m < 4_000_000) return 14;
-  return 12;
+  // Outlines are baked into a fixed-resolution (4096px) texture, so a stroke of
+  // N px maps to a fixed *geographic* width (~9.8km per px). On screen that width
+  // scales with magnification, so a fixed px stroke balloons as you zoom in — a
+  // 14px coastline that reads as a crisp line from orbit becomes a ~35px black
+  // blob at continent scale. To hold a roughly constant on-screen thickness we
+  // shrink the stroke as altitude drops (screen px ≈ texPx · 8.4e6 / alt_m).
+  // Below ~1Mm the texture's ~9.8km texel is itself the floor, so 1px is as thin
+  // as it gets — but that also keeps the stroke far too narrow to swallow inland
+  // areas (the old Warsaw black-screen bug).
+  if (alt_m >= 8_000_000) return 12; // orbit: bold cartoon coastline
+  if (alt_m >= 4_000_000) return 7;
+  if (alt_m >= 2_000_000) return 4;
+  if (alt_m >= 1_000_000) return 3;
+  if (alt_m >= 300_000) return 2;
+  return 1;
 }
