@@ -2,7 +2,7 @@
 
 Animated cartoon globe for React — zoom from orbit to ground level, switch visual styles, drop markers, and drive the camera from your own UI.
 
-<video src="https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/demo.mp4" width="100%" autoplay loop muted playsinline></video>
+[![react-cartoon-planet demo — click to play](https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/solid-big.png)](https://github.com/krzysztofradomski/react-cartoon-planet/blob/main/media/demo.mp4)
 
 ## Install
 
@@ -77,7 +77,7 @@ export function GlobeDemo() {
               START_VIEWS.globe.lng,
               START_VIEWS.globe.lat,
               START_VIEWS.globe.alt_m,
-              { duration: 900 }
+              { duration: 900 },
             )
           }
         >
@@ -135,7 +135,7 @@ Four built-in styles ship out of the box. Switch them in the sidebar (`RenderMod
 
 Cyber mode in motion:
 
-<video src="https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/cyber-short.mp4" width="100%" autoplay loop muted playsinline></video>
+[![Cyber render mode in motion — click to play](https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/cyber-big.png)](https://github.com/krzysztofradomski/react-cartoon-planet/blob/main/media/cyber-short.mp4)
 
 Presets: `SURFACE_RENDER_MODE` (Solid), `DOTS_RENDER_MODE`, `HYBRID_RENDER_MODE`, `CYBERPUNK_RENDER_MODE`, or the full `BUILTIN_RENDER_MODES` array.
 
@@ -168,10 +168,10 @@ Bundled land/maria geometry comes from third-party datasets. Full attribution, d
 
 **[Geospatial data sources](https://github.com/krzysztofradomski/react-cartoon-planet/blob/main/mvp/data/geospatial/source.md)** (`mvp/data/geospatial/source.md`)
 
-| File | Origin |
-| --- | --- |
+| File                 | Origin                                                                                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `earth-land.geojson` | [Natural Earth](https://www.naturalearthdata.com/) `ne_110m_land` — [source GeoJSON](https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson) (Public Domain) |
-| `moon-maria.geojson` | [LROC Global Mare](https://pds.lroc.wisc.edu/) boundaries — converted from the official shapefile ZIP with `shpjs` |
+| `moon-maria.geojson` | [LROC Global Mare](https://pds.lroc.wisc.edu/) boundaries — converted from the official shapefile ZIP with `shpjs`                                                                                       |
 
 ## Controller API
 
@@ -254,7 +254,7 @@ import type { CartoonPlanetThree } from "react-cartoon-planet";
     // Build from the package's THREE so it's the SAME instance the globe runs on.
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(1.25, 0.012, 12, 96),
-      new THREE.MeshBasicMaterial({ color: "#ff2eea" })
+      new THREE.MeshBasicMaterial({ color: "#ff2eea" }),
     );
     ring.rotation.x = Math.PI / 2;
     three.scene.add(ring); // add to `three.planet` instead to move with the globe
@@ -264,16 +264,16 @@ import type { CartoonPlanetThree } from "react-cartoon-planet";
 
 `three` contains:
 
-| Field              | Type                       | Notes                                         |
-| ------------------ | -------------------------- | --------------------------------------------- |
-| `scene`            | `THREE.Scene`              | Root scene                                    |
-| `camera`           | `THREE.PerspectiveCamera`  | Globe camera                                  |
-| `renderer`         | `THREE.WebGLRenderer`      | The WebGL renderer                            |
-| `controls`         | `GlobeControls`            | Orbit/zoom controls (`radius`, `theta`, …)    |
-| `planet`           | `THREE.Group`              | Surface + markers; child of `scene`           |
-| `surfaceGroup`     | `THREE.Group`              | Textured surface + coastline lines            |
-| `markerRoot`       | `THREE.Group`              | Marker meshes                                 |
-| `getMarkerGroup()` | `THREE.Group \| null`      | Current marker group (rebuilds on clustering) |
+| Field              | Type                      | Notes                                         |
+| ------------------ | ------------------------- | --------------------------------------------- |
+| `scene`            | `THREE.Scene`             | Root scene                                    |
+| `camera`           | `THREE.PerspectiveCamera` | Globe camera                                  |
+| `renderer`         | `THREE.WebGLRenderer`     | The WebGL renderer                            |
+| `controls`         | `GlobeControls`           | Orbit/zoom controls (`radius`, `theta`, …)    |
+| `planet`           | `THREE.Group`             | Surface + markers; child of `scene`           |
+| `surfaceGroup`     | `THREE.Group`             | Textured surface + coastline lines            |
+| `markerRoot`       | `THREE.Group`             | Marker meshes                                 |
+| `getMarkerGroup()` | `THREE.Group \| null`     | Current marker group (rebuilds on clustering) |
 
 The render loop is persistent — anything you add draws every frame. The globe lives on a unit sphere (surface ≈ radius `1.0`; one scene unit ≈ Earth's radius). **Always construct objects from the re-exported `THREE`**, not your own `import * as THREE from "three"`, so you share the globe's single instance.
 
