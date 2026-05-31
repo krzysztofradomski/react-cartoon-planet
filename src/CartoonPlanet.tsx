@@ -26,6 +26,7 @@ export type {
   CartoonPlanetController,
   CartoonPlanetInitialState,
   CartoonPlanetProps,
+  CartoonPlanetThree,
   CartoonPlanetUiOptions,
   GlobeEnginePort,
   GlobeRenderConfig,
@@ -103,7 +104,7 @@ function mergeRenderModes(
 }
 
 export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetProps>(function CartoonPlanet(
-  { className, style, maps, renderModes, ui, initialState, onReady, onStateChange, children },
+  { className, style, maps, renderModes, ui, initialState, onReady, onStateChange, onSceneReady, children },
   ref
 ) {
   const enginePortRef = useRef<GlobeEnginePort>({});
@@ -168,6 +169,7 @@ export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetPr
         enginePortRef={enginePortRef}
         ui={uiOptions}
         hasExplicitUi={hasExplicitUi}
+        onSceneReady={onSceneReady}
       >
         {children}
       </GlobeRuntime>

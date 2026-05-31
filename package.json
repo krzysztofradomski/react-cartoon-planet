@@ -38,16 +38,17 @@
   ],
   "peerDependencies": {
     "react": ">=18 <20",
-    "react-dom": ">=18 <20"
+    "react-dom": ">=18 <20",
+    "three": ">=0.160"
   },
   "dependencies": {
-    "earcut": "^2.2.4",
-    "three": "^0.160.0"
+    "earcut": "^2.2.4"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/three": "^0.160.0",
+    "three": "^0.160.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },

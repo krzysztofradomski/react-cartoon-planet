@@ -1,8 +1,12 @@
 export { CartoonPlanet } from './CartoonPlanet';
+// The exact Three.js namespace the globe runs on — build objects from this to
+// avoid duplicate-instance issues (mismatched `instanceof`, separate WebGL state).
+export * as THREE from 'three';
 export type {
   CartoonPlanetController,
   CartoonPlanetInitialState,
   CartoonPlanetProps,
+  CartoonPlanetThree,
   CartoonPlanetUiOptions,
   GlobeEnginePort,
   GlobeRenderConfig,

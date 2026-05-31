@@ -3,6 +3,7 @@ import { MapCatalog } from './catalog/mapCatalog';
 import { RenderCatalog } from './catalog/renderCatalog';
 import type {
   CartoonPlanetInitialState,
+  CartoonPlanetThree,
   GlobeEnginePort,
   GlobeRenderModeDefinition,
   GlobeAutoRotateOptions,
@@ -99,6 +100,15 @@ export class GlobeController {
 
   getState() {
     return this.store.getState();
+  }
+
+  /**
+   * Live Three.js objects (scene, camera, renderer, controls, groups) for direct
+   * use — adding meshes, raycasting, post-processing, etc. Returns `null` until
+   * the scene has mounted; prefer the `onSceneReady` prop for guaranteed timing.
+   */
+  getThree(): CartoonPlanetThree | null {
+    return this.enginePortRef.current?.three ?? null;
   }
 
   subscribe(listener: (state: GlobeState) => void) {

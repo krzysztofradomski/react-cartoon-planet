@@ -12,5 +12,8 @@ export default defineConfig({
   esbuildOptions(options) {
     options.jsx = 'automatic';
   },
-  external: ['react', 'react-dom'],
+  // Keep Three.js external so the consumer shares a single instance with the
+  // globe (so `controller.getThree()` objects, `instanceof`, and the re-exported
+  // `THREE` all line up). It stays a runtime dependency, so it's still installed.
+  external: ['react', 'react-dom', 'three', /^three\//],
 });

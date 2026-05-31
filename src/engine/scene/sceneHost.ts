@@ -42,6 +42,7 @@ export type AttachGlobeSceneOptions = {
   enginePortRef: GlobeEnginePortRef;
   controller: GlobeController;
   startView: StartViewId;
+  onSceneReady?: (three: any) => void;
 };
 
 export function attachGlobeScene({
@@ -49,6 +50,7 @@ export function attachGlobeScene({
   enginePortRef,
   controller,
   startView,
+  onSceneReady,
 }: AttachGlobeSceneOptions): () => void {
   const w = mount.clientWidth;
   const h = mount.clientHeight;
@@ -245,8 +247,21 @@ export function attachGlobeScene({
   const initialView = START_VIEWS[startView] || START_VIEWS.globe;
   controlsInstance.jumpTo(initialView.lng, initialView.lat, 1 + initialView.alt_m / EARTH_RADIUS_M);
 
+  // Live Three.js handles for consumers (controller.getThree() / onSceneReady).
+  const three = {
+    scene,
+    camera,
+    renderer,
+    controls: controlsInstance,
+    planet,
+    surfaceGroup,
+    markerRoot,
+    getMarkerGroup: () => markerRoot.userData.markerGroup ?? null,
+  };
+
   bindEnginePort(enginePortRef, {
     controls: controlsInstance,
+    three,
     setRenderMode: (mode) => rebuildSurface(surfaceGroup.userData.outlinePx || 12, mode),
     rebuildPlanetMap: () => {
       rebuildContinents();
@@ -258,6 +273,8 @@ export function attachGlobeScene({
       rebuildMarkers(list, surfaceGroup.userData.mode, altM, mpp);
     },
   });
+
+  onSceneReady?.(three);
 
   function handleMarkerPick(marker) {
     if (!marker) return;

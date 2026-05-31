@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import type { CartoonPlanetUiOptions, GlobeEnginePort } from '../types';
+import type { CartoonPlanetThree, CartoonPlanetUiOptions, GlobeEnginePort } from '../types';
 import { GlobeController } from '../globeController';
 import { GlobeUiFromChildren, GlobeUiFromOptions } from '../components/globeUi/GlobeUi';
 import { CartoonPlanetProvider } from '../context/cartoonPlanetContext';
@@ -24,12 +24,14 @@ export function GlobeRuntime({
   enginePortRef,
   ui,
   hasExplicitUi,
+  onSceneReady,
   children,
 }: {
   controller: GlobeController;
   enginePortRef: RefObject<GlobeEnginePort>;
   ui: CartoonPlanetUiOptions;
   hasExplicitUi: boolean;
+  onSceneReady?: (three: CartoonPlanetThree) => void;
   children?: ReactNode;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -54,8 +56,9 @@ export function GlobeRuntime({
       enginePortRef,
       controller,
       startView,
+      onSceneReady,
     });
-  }, [controller, enginePortRef, startView]);
+  }, [controller, enginePortRef, startView, onSceneReady]);
 
   const flyTo = useCallback(
     (lng: number, lat: number, alt_m: number) => controller.flyTo(lng, lat, alt_m),

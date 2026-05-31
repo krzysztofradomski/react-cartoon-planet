@@ -1,4 +1,4 @@
-import type { Group } from 'three';
+import type { Group, Scene, PerspectiveCamera, WebGLRenderer } from 'three';
 
 export type StartViewId = 'globe' | 'ground';
 export type MarkerShape = 'orb' | 'cube' | 'bar' | 'icon' | 'cluster';
@@ -155,6 +155,30 @@ export interface GlobeEnginePort {
   setRenderMode?: (modeName: string) => void;
   rebuildPlanetMap?: () => void;
   setMarkers?: (markers: Marker[]) => void;
+  three?: CartoonPlanetThree;
+}
+
+/**
+ * Live Three.js objects backing the globe, for consumers who want to drop in
+ * their own meshes, raycast, post-process, etc. Obtain via `controller.getThree()`,
+ * the `onSceneReady` prop, or `useCartoonPlanet().controller.getThree()`.
+ * The package also re-exports the `THREE` namespace it uses, so construct
+ * objects from that to avoid duplicate-instance issues.
+ */
+export interface CartoonPlanetThree {
+  scene: Scene;
+  camera: PerspectiveCamera;
+  renderer: WebGLRenderer;
+  /** The globe's orbit/zoom controls (GlobeControls instance). */
+  controls: GlobeControlsLike;
+  /** Root group holding the surface + markers; child of `scene`. */
+  planet: Group;
+  /** Group holding the textured surface and coastline lines. */
+  surfaceGroup: Group;
+  /** Group holding the current marker meshes. */
+  markerRoot: Group;
+  /** The current marker mesh group (rebuilt as markers/clustering change). */
+  getMarkerGroup: () => Group | null;
 }
 
 /** @deprecated Use GlobeEnginePort */
@@ -214,6 +238,8 @@ export interface CartoonPlanetProps {
   initialState?: CartoonPlanetInitialState;
   onReady?: (controller: CartoonPlanetController) => void;
   onStateChange?: (state: GlobeState) => void;
+  /** Fires when the Three.js scene is mounted, with the live Three.js objects. */
+  onSceneReady?: (three: CartoonPlanetThree) => void;
   /** Composable HUD and control panels rendered inside the globe viewport. */
   children?: React.ReactNode;
 }
