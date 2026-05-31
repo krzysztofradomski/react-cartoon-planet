@@ -7,22 +7,22 @@ Animated cartoon globe for React — zoom from orbit to ground level, switch vis
 ## Install
 
 ```bash
-npm install react-cartoon-planet
+npm install react-cartoon-planet three
 # or
-pnpm add react-cartoon-planet
+pnpm add react-cartoon-planet three
 ```
 
 **Peer dependencies** (you install these):
 
 - `react` (18 or 19)
 - `react-dom`
+- [`three`](https://threejs.org/) (`>=0.160`) — WebGL scene, globe mesh, markers, custom render modes
+
+`three` is a **peer** so your app and the globe share one Three.js instance — that's what makes `controller.getThree()` objects, `instanceof` checks, and the re-exported `THREE` all line up. Construct your own meshes from the package's re-exported `THREE` (see [Direct Three.js access](#direct-threejs-access)).
 
 **Dependencies** (installed automatically with the package):
 
-- [`three`](https://threejs.org/) — WebGL scene, globe mesh, markers, and custom render modes
 - [`earcut`](https://github.com/mapbox/earcut) — polygon triangulation for continent geometry
-
-You do not need to add `three` or `earcut` yourself unless you build custom render modes or import Three.js types directly — then align with the version the package ships (`three@^0.160`).
 
 Import the bundled stylesheet once in your app:
 
@@ -47,12 +47,14 @@ import {
   MarkerLabelsDisplay,
   MarkerManagerControl,
   MOON_MAP,
+  OutlineStyleControl,
   PlanetMapControl,
   PlacingToastDisplay,
   QuickJumpControl,
   RenderModeControl,
   ScaleBarDisplay,
   StartLevelControl,
+  START_VIEWS,
   SURFACE_RENDER_MODE,
 } from "react-cartoon-planet";
 import type { CartoonPlanetController, GlobeState } from "react-cartoon-planet";
@@ -71,7 +73,12 @@ export function GlobeDemo() {
         </button>
         <button
           onClick={() =>
-            controllerRef.current?.rotateTo(0, 20, { duration: 900 })
+            controllerRef.current?.flyTo(
+              START_VIEWS.globe.lng,
+              START_VIEWS.globe.lat,
+              START_VIEWS.globe.alt_m,
+              { duration: 900 }
+            )
           }
         >
           Reset view
@@ -98,6 +105,7 @@ export function GlobeDemo() {
         <StartLevelControl />
         <PlanetMapControl />
         <RenderModeControl />
+        <OutlineStyleControl />
         <QuickJumpControl />
         <MarkerManagerControl />
       </CartoonPlanet>
@@ -130,6 +138,22 @@ Cyber mode in motion:
 <video src="https://raw.githubusercontent.com/krzysztofradomski/react-cartoon-planet/refs/heads/main/media/cyber-short.mp4" width="100%" autoplay loop muted playsinline></video>
 
 Presets: `SURFACE_RENDER_MODE` (Solid), `DOTS_RENDER_MODE`, `HYBRID_RENDER_MODE`, `CYBERPUNK_RENDER_MODE`, or the full `BUILTIN_RENDER_MODES` array.
+
+## Coastlines
+
+Continent borders render as **screen-space vector lines** (not a baked texture stroke), so they stay a crisp, constant thickness from orbit all the way to ground level instead of ballooning as you zoom in. Toggle bold vs. thin via `OutlineStyleControl`, `controller.setFatOutlines(boolean)`, or `initialState.fatOutlines`:
+
+- **off** (default) — thin 1px lines: crisp and cheap to render.
+- **on** — bold screen-space "fat" lines (~2.5px), DPR-independent (won't look hairline on HiDPI); a little heavier since each segment is a shaded quad.
+
+## Markers
+
+Markers are screen-constant **pins** anchored to the surface — readable from orbit and at ~5 m ground level alike. Supply them via `initialState.markers` or the controller's marker methods. Two sample sets ship: `DEFAULT_MARKERS` (cities) and `WARSAW_BUG_MARKERS` (three pests ~2 m apart, for the clustering demo).
+
+- **Clustering** — at altitude, markers that would overlap on screen merge into a count badge (e.g. "3 pests"). Clicking a cluster flies down to an altitude that frames and separates its members.
+- **Ground level** — keep zooming (down to ~5 m) to see individuals at their true coordinates.
+- **Placement** — `startPlacing()` (or `MarkerManagerControl`) → click the globe to drop a marker exactly where the cursor lands. The built-in editor previews it live on the map (size, color, label, shape); **Save** finalizes, **Cancel** discards.
+- **Links** — `setLinksEnabled(true)` draws arcs between markers; toggle in the UI with `LinksDisplay`.
 
 ## Planet maps
 
@@ -168,6 +192,8 @@ Attach a ref (`useRef<CartoonPlanetController>()`) or use `onReady` to get the c
 | `setMarkers` / `addMarker` / `removeMarker` | Marker CRUD                              |
 | `startPlacing` / `cancelPlacing`            | Click-to-place marker mode               |
 | `setLinksEnabled(boolean)`                  | Toggle marker link lines                 |
+| `setFatOutlines(boolean)`                   | Bold vs thin (1px) vector coastlines     |
+| `getThree()`                                | Live Three.js objects (see below)        |
 | `getState()` / `subscribe(listener)`        | Reactive globe state                     |
 
 `onStateChange` on `<CartoonPlanet>` is the React-friendly alternative to `subscribe`.
@@ -187,8 +213,10 @@ Sidebar panels and HUD widgets are optional React children — include only what
 | `StartLevelControl`      | Globe / ground start level     |
 | `PlanetMapControl`       | Earth / Moon (or custom maps)  |
 | `RenderModeControl`      | Style picker                   |
+| `OutlineStyleControl`    | Bold (fat) coastlines toggle   |
 | `QuickJumpControl`       | Preset locations               |
 | `MarkerManagerControl`   | Add / remove markers           |
+| `LinksDisplay`           | Marker link-lines toggle       |
 | `CartoonPlanetDefaultUi` | All of the above in one bundle |
 
 If you pass `children`, the legacy `ui={{ … }}` prop is ignored. Without children, every built-in panel stays off unless you opt in via `ui`.
@@ -213,6 +241,42 @@ const MY_MODE: GlobeRenderModeDefinition = {
 };
 ```
 
+## Direct Three.js access
+
+Need to drop your own meshes into the scene, raycast, add post-processing, or run a custom animation loop? The globe exposes its live Three.js objects via the `onSceneReady` prop (fires on mount) or `controller.getThree()` (returns `null` until mounted).
+
+```tsx
+import { CartoonPlanet, THREE } from "react-cartoon-planet";
+import type { CartoonPlanetThree } from "react-cartoon-planet";
+
+<CartoonPlanet
+  onSceneReady={(three: CartoonPlanetThree) => {
+    // Build from the package's THREE so it's the SAME instance the globe runs on.
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.25, 0.012, 12, 96),
+      new THREE.MeshBasicMaterial({ color: "#ff2eea" })
+    );
+    ring.rotation.x = Math.PI / 2;
+    three.scene.add(ring); // add to `three.planet` instead to move with the globe
+  }}
+/>;
+```
+
+`three` contains:
+
+| Field              | Type                       | Notes                                         |
+| ------------------ | -------------------------- | --------------------------------------------- |
+| `scene`            | `THREE.Scene`              | Root scene                                    |
+| `camera`           | `THREE.PerspectiveCamera`  | Globe camera                                  |
+| `renderer`         | `THREE.WebGLRenderer`      | The WebGL renderer                            |
+| `controls`         | `GlobeControls`            | Orbit/zoom controls (`radius`, `theta`, …)    |
+| `planet`           | `THREE.Group`              | Surface + markers; child of `scene`           |
+| `surfaceGroup`     | `THREE.Group`              | Textured surface + coastline lines            |
+| `markerRoot`       | `THREE.Group`              | Marker meshes                                 |
+| `getMarkerGroup()` | `THREE.Group \| null`      | Current marker group (rebuilds on clustering) |
+
+The render loop is persistent — anything you add draws every frame. The globe lives on a unit sphere (surface ≈ radius `1.0`; one scene unit ≈ Earth's radius). **Always construct objects from the re-exported `THREE`**, not your own `import * as THREE from "three"`, so you share the globe's single instance.
+
 ## Props
 
 | Prop                  | Type                          | Notes                          |
@@ -222,12 +286,13 @@ const MY_MODE: GlobeRenderModeDefinition = {
 | `initialState`        | `CartoonPlanetInitialState`   | Map, mode, start view, markers |
 | `onStateChange`       | `(state: GlobeState) => void` | HUD, fps, active map/mode      |
 | `onReady`             | `(controller) => void`        | Fires when engine is ready     |
+| `onSceneReady`        | `(three) => void`             | Live Three.js objects on mount |
 | `className` / `style` | —                             | Root container                 |
 | `children`            | React nodes                   | Composable UI (see above)      |
 
-## Demo app incuded
+## Demo app included
 
-The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes.
+The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, the "Warsaw bugs" button drills into the ground-level marker cluster, and `onSceneReady` adds a custom Three.js ring to show direct scene access.
 
 ```bash
 cd demo-app && pnpm install && pnpm dev
