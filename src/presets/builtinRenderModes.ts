@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import type { GlobeRenderConfig, GlobeRenderModeDefinition } from '../types';
 import { buildMapCanvas, buildTextureSphere } from '../engine/builders/mapCanvas';
+import { buildContinentOutlines } from '../engine/builders/continentOutline';
 import { buildDotCloud, buildHybridArcs, buildCyberpunkArcs, buildCyberpunkRings } from '../engine/builders/dotCloud';
 import { R_OCEAN } from '../engine/constants/globeConstants';
 
@@ -10,12 +11,15 @@ export const SURFACE_RENDER_MODE: GlobeRenderModeDefinition = {
   name: 'Solid',
   renderFunction(config: GlobeRenderConfig) {
     const group = new THREE.Group();
+    // Land/ocean fill only — the coastline is drawn as screen-width vector lines
+    // so it stays crisp at every zoom instead of ballooning with the texture.
     const canvas = buildMapCanvas(config.continents, {
-      outlinePx: config.outlinePx,
       oceanColor: config.map.oceanColor,
       landColor: config.map.landColor,
+      drawOutline: false,
     });
     group.add(buildTextureSphere(canvas, R_OCEAN));
+    group.add(buildContinentOutlines(config.continents, { color: '#0a0a14', fat: config.fatOutline }));
     return group;
   },
   getAtmosphereColor() {
@@ -37,6 +41,7 @@ export const DOTS_RENDER_MODE: GlobeRenderModeDefinition = {
     });
     group.add(buildTextureSphere(baseCanvas, R_OCEAN, { opacity: 0.58, transparent: true }));
     group.add(buildDotCloud(config.continents, 'dots'));
+    group.add(buildContinentOutlines(config.continents, { color: '#7fd4ff', fat: config.fatOutline }));
     return group;
   },
   getAtmosphereColor() {
@@ -64,6 +69,7 @@ export const HYBRID_RENDER_MODE: GlobeRenderModeDefinition = {
     const dots = buildDotCloud(config.continents, 'hybrid');
     group.add(dots);
     group.add(buildHybridArcs(dots.userData.landPoints || []));
+    group.add(buildContinentOutlines(config.continents, { color: '#a98cff', fat: config.fatOutline }));
     return group;
   },
   getAtmosphereColor() {
@@ -81,9 +87,7 @@ export const CYBERPUNK_RENDER_MODE: GlobeRenderModeDefinition = {
     const baseCanvas = buildMapCanvas(config.continents, {
       landColor: '#0c001c',
       oceanColor: '#020008',
-      drawOutline: true,
-      outlineColor: '#00ffff',
-      outlinePx: config.outlinePx,
+      drawOutline: false,
       landGrid: true,
     });
     group.add(buildTextureSphere(baseCanvas, R_OCEAN, {
@@ -95,6 +99,7 @@ export const CYBERPUNK_RENDER_MODE: GlobeRenderModeDefinition = {
     group.add(buildCyberpunkRings());
     group.add(dots);
     group.add(buildCyberpunkArcs(dots.userData.landPoints || []));
+    group.add(buildContinentOutlines(config.continents, { color: '#00ffff', fat: config.fatOutline }));
     return group;
   },
   getAtmosphereColor() {

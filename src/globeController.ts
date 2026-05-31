@@ -50,6 +50,7 @@ class GlobeStateStore {
       fps: 0,
       markerLabels: [],
       linksEnabled: true,
+      fatOutlines: false,
       ...initialState,
     };
   }
@@ -195,6 +196,10 @@ export class GlobeController {
 
   removeMarker(id: string) {
     this.setMarkers(this.store.getState().markers.filter((m) => m.id !== id));
+  }
+
+  setFatOutlines(enabled: boolean) {
+    this.store.setState({ fatOutlines: !!enabled });
   }
 
   setLinksEnabled(enabled: boolean) {

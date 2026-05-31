@@ -6,12 +6,12 @@ import { buildPlanetSurface } from '../builders/planetSurface';
 import { buildStarfield } from '../builders/starfield';
 import { buildMarkers, orientToSurface, projectMarkerLabels, findMarkerFromObject, updateMarkerVisualScale } from '../builders/markers';
 import { resolveDisplayMarkers } from '../markers/markerDisplay';
+import { updateContinentOutlineResolution } from '../builders/continentOutline';
 import { metersPerPixel } from '../geo/distance';
-import { outlineWidthForAltitude, vec3ToLngLat, hash } from '../geo/math';
+import { vec3ToLngLat, hash } from '../geo/math';
 import { R_LAND } from '../constants/globeConstants';
 import { EARTH_RADIUS_M, START_VIEWS, GlobeController } from '../../globeController';
 import type { StartViewId } from '../../types';
-import { SURFACE_RENDER_MODE } from '../../presets/builtinRenderModes';
 import { formatAltitude, formatScaleBar } from '../../components/globeUi/hudFormat';
 import { bindEnginePort, clearEnginePort, type GlobeEnginePortRef } from '../globeEnginePort';
 
@@ -150,16 +150,28 @@ export function attachGlobeScene({
     }
     surfaceGroup.userData.outlinePx = outlinePx;
     surfaceGroup.userData.mode = modeName;
+    const fatOutlines = !!controller.getState().fatOutlines;
+    surfaceGroup.userData.fatOutlines = fatOutlines;
     const continents = mapCatalog.getContinents();
     const mapOpts = getMapOptions();
     surfaceGroup.add(
-      buildPlanetSurface(renderCatalog, modeName, continents, outlinePx, {
-        ...mapOpts,
-        name: mapCatalog.getActiveName(),
-      })
+      buildPlanetSurface(
+        renderCatalog,
+        modeName,
+        continents,
+        outlinePx,
+        { ...mapOpts, name: mapCatalog.getActiveName() },
+        { fatOutline: fatOutlines }
+      )
     );
+    syncOutlineResolution();
 
     rebuildMarkers(controller.getState().markers, modeName);
+  }
+
+  function syncOutlineResolution() {
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    updateContinentOutlineResolution(surfaceGroup, size.x, size.y);
   }
 
   function rebuildContinents() {
@@ -300,11 +312,15 @@ export function attachGlobeScene({
     renderer.setSize(rw, rh);
     camera.aspect = rw / rh;
     camera.updateProjectionMatrix();
+    syncOutlineResolution();
   }
   window.addEventListener('resize', onResize);
 
   const unsubscribeState = controller.subscribe((state) => {
-    if (state.renderMode !== surfaceGroup.userData.mode) {
+    if (
+      state.renderMode !== surfaceGroup.userData.mode ||
+      !!state.fatOutlines !== !!surfaceGroup.userData.fatOutlines
+    ) {
       rebuildSurface(surfaceGroup.userData.outlinePx || 12, state.renderMode);
     }
   });
@@ -330,10 +346,8 @@ export function attachGlobeScene({
     try {
       controlsInstance.tick();
       const alt = (controlsInstance.radius - 1) * EARTH_RADIUS_M;
-      const nextOutlinePx = outlineWidthForAltitude(alt);
-      if (surfaceGroup.userData.mode === SURFACE_RENDER_MODE.name && nextOutlinePx !== surfaceGroup.userData.outlinePx) {
-        rebuildSurface(nextOutlinePx, surfaceGroup.userData.mode);
-      }
+      // Coastlines are screen-width vector lines now, so the surface no longer
+      // needs regenerating as altitude changes.
 
       const screenW = renderer.domElement.clientWidth || 800;
       const mpp = metersPerPixel(controlsInstance.radius, camera, screenW);

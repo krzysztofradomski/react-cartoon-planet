@@ -202,6 +202,38 @@ function LinksControlPanel({
   );
 }
 
+function OutlineStyleControlPanel({
+  fatOutlines,
+  controller,
+}: {
+  fatOutlines: boolean;
+  controller: GlobeController;
+}) {
+  return (
+    <div className="panel">
+      <div className="panel-title">Coastlines</div>
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          cursor: 'pointer',
+          fontSize: 12,
+          color: 'var(--hud-fg)',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={!!fatOutlines}
+          onChange={(e) => controller.setFatOutlines(e.target.checked)}
+          style={{ accentColor: 'var(--accent)', cursor: 'pointer', margin: 0 }}
+        />
+        Bold (fat) borders
+      </label>
+    </div>
+  );
+}
+
 function MarkerManagerPanel({
   markers,
   setMarkers,
@@ -660,6 +692,11 @@ export const MarkerLabelsDisplay = assignCartoonPlanetSlot('root', function Mark
 export const LinksDisplay = assignCartoonPlanetSlot('overlay', function LinksDisplay() {
   const { globeState, controller } = useCartoonPlanet();
   return <LinksControlPanel linksEnabled={globeState.linksEnabled} controller={controller} />;
+});
+
+export const OutlineStyleControl = assignCartoonPlanetSlot('overlay', function OutlineStyleControl() {
+  const { globeState, controller } = useCartoonPlanet();
+  return <OutlineStyleControlPanel fatOutlines={globeState.fatOutlines} controller={controller} />;
 });
 
 export const PlacingToastDisplay = assignCartoonPlanetSlot('root', function PlacingToastDisplay() {

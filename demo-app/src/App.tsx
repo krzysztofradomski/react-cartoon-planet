@@ -10,6 +10,7 @@ import {
   HintDisplay,
   MarkerLabelsDisplay,
   MarkerManagerControl,
+  OutlineStyleControl,
   MOON_MAP,
   PlanetMapControl,
   PlacingToastDisplay,
@@ -202,6 +203,7 @@ function App() {
           <StartLevelControl />
           <PlanetMapControl />
           <RenderModeControl />
+          <OutlineStyleControl />
           <QuickJumpControl />
           <MarkerManagerControl />
         </CartoonPlanet>

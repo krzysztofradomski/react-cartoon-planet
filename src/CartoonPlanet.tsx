@@ -69,6 +69,7 @@ export {
   LinksDisplay,
   MarkerLabelsDisplay,
   MarkerManagerControl,
+  OutlineStyleControl,
   PlanetMapControl,
   PlacingToastDisplay,
   QuickJumpControl,

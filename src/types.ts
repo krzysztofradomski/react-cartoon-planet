@@ -20,6 +20,8 @@ export interface GlobeRenderConfig {
   continents: Continent[];
   map: PlanetMapOptions & { name: string };
   outlinePx: number;
+  /** Draw coastlines as bold screen-space "fat" lines instead of 1px GL lines. */
+  fatOutline: boolean;
   altitude: number;
   time: number;
 }
@@ -88,6 +90,8 @@ export interface GlobeState {
   fps: number;
   markerLabels: MarkerLabel[];
   linksEnabled: boolean;
+  /** Bold (fat) vector coastlines vs. thin 1px lines. */
+  fatOutlines: boolean;
 }
 
 export interface CartoonPlanetUiOptions {
@@ -110,6 +114,7 @@ export interface CartoonPlanetInitialState {
   startView?: StartViewId;
   markers?: Marker[];
   linksEnabled?: boolean;
+  fatOutlines?: boolean;
 }
 
 export interface GlobeView {

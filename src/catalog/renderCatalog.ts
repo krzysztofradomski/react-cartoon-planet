@@ -47,7 +47,7 @@ export class RenderCatalog {
     modeName: string,
     continents: Continent[],
     mapOptions: PlanetMapOptions & { name: string },
-    options: { outlinePx?: number; altitude?: number; time?: number } = {}
+    options: { outlinePx?: number; fatOutline?: boolean; altitude?: number; time?: number } = {}
   ): Group {
     const mode = this.get(modeName) || this.getActive();
     if (!mode) return new Group();
@@ -55,6 +55,7 @@ export class RenderCatalog {
       continents,
       map: mapOptions,
       outlinePx: options.outlinePx ?? 12,
+      fatOutline: !!options.fatOutline,
       altitude: options.altitude ?? 0,
       time: options.time ?? performance.now(),
     };
