@@ -177,11 +177,13 @@ export class GlobeControls {
       this.targetTheta += (this._autoRotateDegPerSec * Math.PI / 180) * dtSec;
     }
 
-    this._update(false);
+    this._update(false, dtSec);
   }
 
-  _update(snap) {
-    const a = snap ? 1 : 0.18;
+  _update(snap, dtSec = 1 / 60) {
+    // exp decay: k=12 matches the original 0.18/frame feel at 60 fps but is
+    // frame-rate-independent — fast on 144 Hz, correct on 30 Hz.
+    const a = snap ? 1 : 1 - Math.exp(-12 * dtSec);
     this.radius += (this.targetRadius - this.radius) * a;
     this.theta  += (this.targetTheta  - this.theta)  * a;
     this.phi    += (this.targetPhi    - this.phi)    * a;

@@ -65,8 +65,10 @@ export function spreadOverlappingMarkers(markers: Marker[], minSeparationM: numb
   if (markers.length <= 1) return markers.map((m) => cloneMarker(m));
 
   const uf = new UnionFind(markers.length);
+  const latThreshDegSpread = (minSeparationM / 111_132) * 2;
   for (let i = 0; i < markers.length; i++) {
     for (let j = i + 1; j < markers.length; j++) {
+      if (Math.abs(markers[i].lat - markers[j].lat) > latThreshDegSpread) continue;
       const d = haversineMeters(markers[i].lng, markers[i].lat, markers[j].lng, markers[j].lat);
       if (d < minSeparationM) uf.union(i, j);
     }
@@ -190,8 +192,10 @@ export function resolveDisplayMarkers(
   }
 
   const uf = new UnionFind(valid.length);
+  const latThreshDegCluster = (Math.min(clusterRadiusM, opts.clusterMaxSpreadM) / 111_132) * 2;
   for (let i = 0; i < valid.length; i++) {
     for (let j = i + 1; j < valid.length; j++) {
+      if (Math.abs(valid[i].lat - valid[j].lat) > latThreshDegCluster) continue;
       const d = haversineMeters(valid[i].lng, valid[i].lat, valid[j].lng, valid[j].lat);
       if (d <= clusterRadiusM && d <= opts.clusterMaxSpreadM) uf.union(i, j);
     }

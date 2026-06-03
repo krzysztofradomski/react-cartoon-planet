@@ -23,6 +23,9 @@ const _qOrb = new THREE.Quaternion();
 const _vAxisZ = new THREE.Vector3(0, 0, 1);
 const _placeSphere = new THREE.Sphere(undefined, R_LAND);
 const _placeHit = new THREE.Vector3();
+const _mapAtmoColor = new THREE.Color();
+const _drawingBufferSize = new THREE.Vector2();
+const _raycaster = new THREE.Raycaster();
 
 function disposeObject3D(child) {
   child.traverse((o) => {
@@ -95,6 +98,10 @@ export function attachGlobeScene({
   }
 
   let lastMarkerDisplayKey = '';
+  let prevTickRadius = -1;
+  let prevTickTheta = -1;
+  let prevTickPhi = -1;
+  let prevTickMarkerKey = '';
 
   function markerDisplayKey(rawMarkers, altM, mpp) {
     // Only rebuild when the resolved set can actually change: entering the
@@ -172,8 +179,8 @@ export function attachGlobeScene({
   }
 
   function syncOutlineResolution() {
-    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-    updateContinentOutlineResolution(surfaceGroup, size.x, size.y);
+    renderer.getDrawingBufferSize(_drawingBufferSize);
+    updateContinentOutlineResolution(surfaceGroup, _drawingBufferSize.x, _drawingBufferSize.y);
   }
 
   function rebuildContinents() {
@@ -292,13 +299,12 @@ export function attachGlobeScene({
       -((e.clientY - rect.top) / rect.height) * 2 + 1
     );
 
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mouse, camera);
+    _raycaster.setFromCamera(mouse, camera);
 
     if (!enginePortRef.current?.isPlacingMode) {
       const markerGroup = markerRoot.userData.markerGroup;
       if (markerGroup) {
-        const markerHits = raycaster.intersectObjects(markerGroup.children, true);
+        const markerHits = _raycaster.intersectObjects(markerGroup.children, true);
         for (const hit of markerHits) {
           const marker = findMarkerFromObject(hit.object);
           if (marker) {
@@ -314,7 +320,7 @@ export function attachGlobeScene({
     // cursor at any altitude (precise to the surface even at ~5m ground level).
     // To place precisely between markers that are metres apart, zoom in — at
     // altitude one pixel spans kilometres, so there is no sub-pixel "between".
-    if (raycaster.ray.intersectSphere(_placeSphere, _placeHit)) {
+    if (_raycaster.ray.intersectSphere(_placeSphere, _placeHit)) {
       const { lng, lat } = vec3ToLngLat(_placeHit);
       if (enginePortRef.current?.onGlobeClick) {
         enginePortRef.current.onGlobeClick(lng, lat);
@@ -382,8 +388,7 @@ export function attachGlobeScene({
       );
 
       const dir = camera.position.clone().normalize();
-      const surface = dir.clone().multiplyScalar(1.0);
-      const { lat, lng } = vec3ToLngLat(surface);
+      const { lat, lng } = vec3ToLngLat(dir);
 
       const atmoStrength = atmo.userData.strength != null ? atmo.userData.strength : 1;
       atmoMat.opacity = THREE.MathUtils.clamp((alt / 1_000_000) * atmoStrength, 0, 1);
@@ -395,8 +400,8 @@ export function attachGlobeScene({
       const modeAtmo = modeObj?.getAtmosphereColor
         ? modeObj.getAtmosphereColor()
         : new THREE.Color(0.45, 0.7, 1.0);
-      const mapAtmo = new THREE.Color(getMapOptions().atmosphereColor || '#73b3ff');
-      atmoMat.uniforms.uColor.value.copy(modeAtmo).lerp(mapAtmo, 0.35);
+      _mapAtmoColor.set(getMapOptions().atmosphereColor || '#73b3ff');
+      atmoMat.uniforms.uColor.value.copy(modeAtmo).lerp(_mapAtmoColor, 0.35);
 
       renderCatalog.animate(currentMode, surfaceGroup, { alt, time: performance.now() });
 
@@ -473,19 +478,36 @@ export function attachGlobeScene({
         }
       });
 
-      controller.updateMarkerLabels(
-        projectMarkerLabels(markerRoot.userData.markerGroup, camera, renderer.domElement)
-      );
+      // Only push React state updates when the camera has actually moved or the
+      // marker set has changed. At 60 fps on a static globe this drops ~120
+      // store.notify() calls/sec (two per frame) to zero, preventing continuous
+      // React re-renders of the entire UI subtree.
+      const cameraOrMarkerChanged =
+        controlsInstance.radius !== prevTickRadius ||
+        controlsInstance.theta !== prevTickTheta ||
+        controlsInstance.phi !== prevTickPhi ||
+        lastMarkerDisplayKey !== prevTickMarkerKey;
 
-      const scaleBarLabel = formatScaleBar(controlsInstance.radius, camera, renderer.domElement.clientWidth);
-      controller.updateHUD({
-        altitude: alt,
-        focusLat: lat,
-        focusLng: lng,
-        scaleLabel: formatAltitude(alt),
-        scaleBarPx: scaleBarLabel.px,
-        scaleBarLabel: scaleBarLabel.label,
-      });
+      if (cameraOrMarkerChanged) {
+        prevTickRadius = controlsInstance.radius;
+        prevTickTheta = controlsInstance.theta;
+        prevTickPhi = controlsInstance.phi;
+        prevTickMarkerKey = lastMarkerDisplayKey;
+
+        controller.updateMarkerLabels(
+          projectMarkerLabels(markerRoot.userData.markerGroup, camera, renderer.domElement)
+        );
+
+        const scaleBarLabel = formatScaleBar(controlsInstance.radius, camera, renderer.domElement.clientWidth);
+        controller.updateHUD({
+          altitude: alt,
+          focusLat: lat,
+          focusLng: lng,
+          scaleLabel: formatAltitude(alt),
+          scaleBarPx: scaleBarLabel.px,
+          scaleBarLabel: scaleBarLabel.label,
+        });
+      }
 
       renderer.render(scene, camera);
     } catch (e) {

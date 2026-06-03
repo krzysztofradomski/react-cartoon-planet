@@ -17,8 +17,6 @@ import {
   type CartoonPlanetProps,
   type CartoonPlanetUiOptions,
   type GlobeEnginePort,
-  type GlobeRenderModeDefinition,
-  type PlanetMapDefinition,
 } from './types';
 import './styles/cartoon-planet.css';
 
@@ -90,18 +88,6 @@ function mergeUiOptions(ui?: Partial<CartoonPlanetUiOptions>): {
   return { options: { ...DEFAULT_UI_OPTIONS, ...ui }, hasExplicitUi: true };
 }
 
-function mergeMaps(maps: PlanetMapDefinition[], initial?: PlanetMapDefinition): PlanetMapDefinition[] {
-  if (!initial) return maps;
-  return maps.some((m) => m.name === initial.name) ? maps : [...maps, initial];
-}
-
-function mergeRenderModes(
-  modes: GlobeRenderModeDefinition[],
-  initial?: GlobeRenderModeDefinition
-): GlobeRenderModeDefinition[] {
-  if (!initial) return modes;
-  return modes.some((m) => m.name === initial.name) ? modes : [...modes, initial];
-}
 
 export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetProps>(function CartoonPlanet(
   { className, style, maps, renderModes, ui, initialState, onReady, onStateChange, onSceneReady, children },
@@ -109,27 +95,17 @@ export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetPr
 ) {
   const enginePortRef = useRef<GlobeEnginePort>({});
   const { options: uiOptions, hasExplicitUi } = useMemo(() => mergeUiOptions(ui), [ui]);
-  const initialStateKey = useMemo(() => JSON.stringify(initialState || {}), [initialState]);
-  const stableInitialState = useMemo<CartoonPlanetInitialState>(
-    () => JSON.parse(initialStateKey),
-    [initialStateKey]
-  );
-
-  const resolvedMaps = useMemo(
-    () => mergeMaps(maps ?? BUILTIN_MAPS, stableInitialState.map),
-    [maps, stableInitialState.map]
-  );
-  const resolvedRenderModes = useMemo(
-    () => mergeRenderModes(renderModes ?? BUILTIN_RENDER_MODES, stableInitialState.renderMode),
-    [renderModes, stableInitialState.renderMode]
-  );
+  // Treat initialState as mount-time configuration — matching the controller's own
+  // [] deps. A ref avoids JSON.stringify/parse on every parent render, which is
+  // O(n) in continent polygon data when initialState.map.continents is preloaded.
+  const stableInitialState: CartoonPlanetInitialState = useRef(initialState).current ?? {};
 
   const controller = useMemo(
     () =>
       createGlobeController(enginePortRef, {
         initialState: stableInitialState,
-        maps: resolvedMaps,
-        renderModes: resolvedRenderModes,
+        maps: maps ?? BUILTIN_MAPS,
+        renderModes: renderModes ?? BUILTIN_RENDER_MODES,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- controller is created once per mount
     []
