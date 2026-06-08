@@ -1,0 +1,4 @@
+[build]
+  base = "demo-app"
+  command = "pnpm run build"
+  publish = "dist"
