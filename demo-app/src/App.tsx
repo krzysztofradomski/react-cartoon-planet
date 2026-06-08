@@ -29,11 +29,7 @@ import type {
   Marker,
   PlanetMapDefinition,
 } from "react-cartoon-planet";
-import {
-  DEFAULT_MARKERS,
-  WARSAW_LANDMARK_MARKERS,
-  THREE,
-} from "react-cartoon-planet";
+import { DEFAULT_MARKERS, WARSAW_LANDMARK_MARKERS } from "react-cartoon-planet";
 import { playIntro } from "./playIntro";
 
 const DEMO_MAPS: PlanetMapDefinition[] = [EARTH_MAP, MOON_MAP];
@@ -226,16 +222,15 @@ function App() {
           renderModes={renderModes}
           initialState={initialState}
           onStateChange={setPlanetState}
-          onSceneReady={(three) => {
-            // Example: drop a custom object straight into the globe's scene,
-            // using the SAME Three.js instance the package re-exports.
-            const ring = new THREE.Mesh(
-              new THREE.TorusGeometry(1.25, 0.012, 12, 96),
-              new THREE.MeshBasicMaterial({ color: "#ff2eea" }),
-            );
-            ring.rotation.x = Math.PI / 2;
-            three.scene.add(ring);
-          }}
+          // onSceneReady={(three) => {
+          //   // Example: drop a custom object into the globe scene (import THREE from react-cartoon-planet).
+          //   // const ring = new THREE.Mesh(
+          //   //   new THREE.TorusGeometry(1.25, 0.012, 12, 96),
+          //   //   new THREE.MeshBasicMaterial({ color: "#ff2eea" }),
+          //   // );
+          //   // ring.rotation.x = Math.PI / 2;
+          //   // three.scene.add(ring);
+          // }}
         >
           {showGlobeControls && (
             <>
