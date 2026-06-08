@@ -447,7 +447,7 @@ export function projectMarkerLabels(markerGroup, camera, canvas) {
 
     labels.push({
       id: marker.id || marker.label || `${marker.lng},${marker.lat}`,
-      label: marker.isCluster ? `${marker.clusterCount} pests` : marker.label || marker.id || 'Marker',
+      label: marker.isCluster ? `${marker.clusterCount} landmarks` : marker.label || marker.id || 'Marker',
       color: marker.color || '#ff5e3a',
       lng: marker.lng,
       lat: marker.lat,

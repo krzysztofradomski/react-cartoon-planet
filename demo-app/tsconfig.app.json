@@ -6,6 +6,10 @@
     "module": "esnext",
     "types": ["vite/client"],
     "skipLibCheck": true,
+    "paths": {
+      "react-cartoon-planet": ["../dist/index.d.ts"],
+      "react-cartoon-planet/style.css": ["../dist/index.css"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

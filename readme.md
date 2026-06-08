@@ -148,9 +148,9 @@ Continent borders render as **screen-space vector lines** (not a baked texture s
 
 ## Markers
 
-Markers are screen-constant **pins** anchored to the surface — readable from orbit and at ~5 m ground level alike. Supply them via `initialState.markers` or the controller's marker methods. Two sample sets ship: `DEFAULT_MARKERS` (cities) and `WARSAW_BUG_MARKERS` (three pests ~2 m apart, for the clustering demo).
+Markers are screen-constant **pins** anchored to the surface — readable from orbit and at ~5 m ground level alike. Supply them via `initialState.markers` or the controller's marker methods. Two sample sets ship: `DEFAULT_MARKERS` (cities) and `WARSAW_LANDMARK_MARKERS` (three imaginary Warsaw landmarks ~2 m apart, for the clustering demo).
 
-- **Clustering** — at altitude, markers that would overlap on screen merge into a count badge (e.g. "3 pests"). Clicking a cluster flies down to an altitude that frames and separates its members.
+- **Clustering** — at altitude, markers that would overlap on screen merge into a count badge (e.g. "3 landmarks"). Clicking a cluster flies down to an altitude that frames and separates its members.
 - **Ground level** — keep zooming (down to ~5 m) to see individuals at their true coordinates.
 - **Placement** — `startPlacing()` (or `MarkerManagerControl`) → click the globe to drop a marker exactly where the cursor lands. The built-in editor previews it live on the map (size, color, label, shape); **Save** finalizes, **Cancel** discards.
 - **Links** — `setLinksEnabled(true)` draws arcs between markers; toggle in the UI with `LinksDisplay`.
@@ -292,7 +292,7 @@ The render loop is persistent — anything you add draws every frame. The globe 
 
 ## Demo app included
 
-The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, the "Warsaw bugs" button drills into the ground-level marker cluster, and `onSceneReady` adds a custom Three.js ring to show direct scene access.
+The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, the "Warsaw landmarks" button drills into the ground-level marker cluster, and `onSceneReady` adds a custom Three.js ring to show direct scene access.
 
 ```bash
 cd demo-app && pnpm install && pnpm dev

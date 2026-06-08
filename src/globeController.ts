@@ -242,7 +242,7 @@ export class GlobeController {
     if (!marker) return;
     const isSmall =
       marker.shape === 'icon' || (marker.size != null && marker.size <= 0.012);
-    // Small ground-level markers (e.g. individual pests) drop almost to the
+    // Small ground-level markers (e.g. individual landmarks) drop almost to the
     // surface so the screen-constant pins read as distinct individuals.
     const alt = isSmall ? 6 : 1500;
     this.flyTo(marker.lng, marker.lat, alt);

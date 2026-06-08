@@ -29,13 +29,17 @@ import type {
   Marker,
   PlanetMapDefinition,
 } from "react-cartoon-planet";
-import { DEFAULT_MARKERS, WARSAW_BUG_MARKERS, THREE } from "react-cartoon-planet";
+import {
+  DEFAULT_MARKERS,
+  WARSAW_LANDMARK_MARKERS,
+  THREE,
+} from "react-cartoon-planet";
 import { playIntro } from "./playIntro";
 
 const DEMO_MAPS: PlanetMapDefinition[] = [EARTH_MAP, MOON_MAP];
 const DEMO_RENDER_MODES: GlobeRenderModeDefinition[] = BUILTIN_RENDER_MODES;
 
-const DEMO_MARKERS: Marker[] = [...DEFAULT_MARKERS, ...WARSAW_BUG_MARKERS];
+const DEMO_MARKERS: Marker[] = [...DEFAULT_MARKERS, ...WARSAW_LANDMARK_MARKERS];
 
 const DEMO_INITIAL_STATE: CartoonPlanetInitialState = {
   map: EARTH_MAP,
@@ -125,11 +129,9 @@ function App() {
             </button>
             <button
               type="button"
-              onClick={() =>
-                controllerRef.current?.flyTo(21.0122, 52.2297, 6)
-              }
+              onClick={() => controllerRef.current?.flyTo(21.0122, 52.2297, 6)}
             >
-              Warsaw bugs
+              Warsaw landmarks
             </button>
             <button
               type="button"
@@ -138,7 +140,7 @@ function App() {
                   START_VIEWS.globe.lng,
                   START_VIEWS.globe.lat,
                   START_VIEWS.globe.alt_m,
-                  { duration: 900 }
+                  { duration: 900 },
                 )
               }
             >
@@ -198,7 +200,7 @@ function App() {
             // using the SAME Three.js instance the package re-exports.
             const ring = new THREE.Mesh(
               new THREE.TorusGeometry(1.25, 0.012, 12, 96),
-              new THREE.MeshBasicMaterial({ color: "#ff2eea" })
+              new THREE.MeshBasicMaterial({ color: "#ff2eea" }),
             );
             ring.rotation.x = Math.PI / 2;
             three.scene.add(ring);

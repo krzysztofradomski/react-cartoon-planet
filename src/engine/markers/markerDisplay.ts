@@ -87,7 +87,7 @@ export function spreadOverlappingMarkers(markers: Marker[], minSeparationM: numb
     if (indices.length <= 1) continue;
 
     // Union-find can chain A–B and B–C when only the middle links are within
-    // minSeparationM (e.g. placing between two bugs ~0.8 m apart). Only fan out
+    // minSeparationM (e.g. placing between two landmarks ~0.8 m apart). Only fan out
     // groups that are genuinely piled up, not loosely connected chains.
     let maxPairM = 0;
     for (let a = 0; a < indices.length; a++) {
@@ -136,7 +136,7 @@ export function spreadOverlappingMarkers(markers: Marker[], minSeparationM: numb
 /**
  * Altitude (m) at which a cluster's members fill a comfortable fraction of the
  * view, so clicking the cluster drills down far enough to actually separate
- * them. A tight group (e.g. pests ~3m apart) resolves to ~ground level; a wide
+ * them. A tight group (e.g. landmarks ~3m apart) resolves to ~ground level; a wide
  * group (cities) stays high. Without this, clicking a cluster flew to a fixed
  * altitude where tightly-packed members still stacked on one point.
  */
@@ -159,7 +159,7 @@ function buildClusterMarker(members: Marker[], id: string): Marker {
 
   return {
     id,
-    label: members.length === 1 ? dominant.label : `${members.length} pests`,
+    label: members.length === 1 ? dominant.label : `${members.length} landmarks`,
     lng: centerLng,
     lat: centerLat,
     shape: 'orb',

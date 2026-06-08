@@ -58,7 +58,7 @@ export {
   CYBERPUNK_RENDER_MODE,
 } from './presets/builtinRenderModes';
 export { START_VIEWS } from './globeController';
-export { DEFAULT_MARKERS, WARSAW_BUG_MARKERS } from './types';
+export { DEFAULT_MARKERS, WARSAW_LANDMARK_MARKERS } from './types';
 export { flattenGeoJsonToContinents } from './catalog/mapCatalog';
 export { useCartoonPlanet } from './context/cartoonPlanetContext';
 export {

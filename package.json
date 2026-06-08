@@ -45,6 +45,7 @@
     "earcut": "^2.2.4"
   },
   "devDependencies": {
+    "@types/node": "^25.9.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/three": "^0.160.0",

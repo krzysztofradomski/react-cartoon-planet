@@ -285,33 +285,35 @@ export const DEFAULT_MARKERS: Marker[] = [
   { id: 'sydney', label: 'Sydney orb', lng: 151.2093, lat: -33.8688, shape: 'orb', color: '#b36cff', size: 0.023 },
 ];
 
-/** Sample pests within ~2 m of each other — for clustering / spread demos. */
-export const WARSAW_BUG_MARKERS: Marker[] = [
+/** Imaginary Warsaw landmarks within ~2 m of each other — for clustering / spread demos. */
+export const WARSAW_LANDMARK_MARKERS: Marker[] = [
   {
-    id: 'warsaw-ladybug',
-    label: 'Ladybug',
+    id: 'warsaw-whisper-palace',
+    label: 'Whisper Palace',
     lng: 21.0122,
     lat: 52.2297,
-    shape: 'icon',
-    color: '#d32f2f',
+    shape: 'bar',
+    color: '#8e24aa',
     size: 0.03,
+    height: 0.06,
   },
   {
-    id: 'warsaw-mosquito',
-    label: 'Mosquito',
+    id: 'warsaw-glass-pier',
+    label: 'Glass Pier',
     lng: 21.0122146,
     lat: 52.229709,
-    shape: 'icon',
-    color: '#607d8b',
+    shape: 'cube',
+    color: '#00bcd4',
     size: 0.03,
   },
   {
-    id: 'warsaw-hornet',
-    label: 'Hornet',
+    id: 'warsaw-pickle-tower',
+    label: 'Pickle Tower',
     lng: 21.012205,
     lat: 52.229718,
-    shape: 'icon',
-    color: '#f9a825',
+    shape: 'bar',
+    color: '#7cb342',
     size: 0.03,
+    height: 0.05,
   },
 ];

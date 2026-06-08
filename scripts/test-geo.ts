@@ -1,17 +1,23 @@
-import assert from 'node:assert/strict';
+import assert from "node:assert/strict";
 import {
   lngLatToVec3,
   vec3ToLngLat,
   cleanRing,
   hash,
   outlineWidthForAltitude,
-} from '../src/engine/geo/math.ts';
+} from "../src/engine/geo/math.ts";
 
 const sample = { lng: -74.006, lat: 40.7128 };
 const v = lngLatToVec3(sample.lng, sample.lat, 1);
 const back = vec3ToLngLat(v);
-assert.ok(Math.abs(back.lng - sample.lng) < 0.001, `lng round-trip: ${back.lng}`);
-assert.ok(Math.abs(back.lat - sample.lat) < 0.001, `lat round-trip: ${back.lat}`);
+assert.ok(
+  Math.abs(back.lng - sample.lng) < 0.001,
+  `lng round-trip: ${back.lng}`,
+);
+assert.ok(
+  Math.abs(back.lat - sample.lat) < 0.001,
+  `lat round-trip: ${back.lat}`,
+);
 
 const ring = cleanRing([
   [0, 0],
@@ -38,9 +44,14 @@ function outlineHalfWidthKm(altM: number) {
 }
 // Warsaw sits ~250km inland; keep the stroke well under that so inland ground
 // views render land, not the outline colour.
-for (const altM of [350, 1_500, 5_000, 50_000, 200_000, 1_000_000, 14_000_000]) {
+for (const altM of [
+  350, 1_500, 5_000, 50_000, 200_000, 1_000_000, 14_000_000,
+]) {
   const halfKm = outlineHalfWidthKm(altM);
-  assert.ok(halfKm < 100, `outline half-width at ${altM}m is ${halfKm.toFixed(0)}km (must stay <100km)`);
+  assert.ok(
+    halfKm < 100,
+    `outline half-width at ${altM}m is ${halfKm.toFixed(0)}km (must stay <100km)`,
+  );
 }
 
-console.log('geo/math tests passed');
+console.log("geo/math tests passed");
