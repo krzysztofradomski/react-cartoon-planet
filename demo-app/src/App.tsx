@@ -6,7 +6,6 @@ import {
   BUILTIN_RENDER_MODES,
   CartoonPlanet,
   EARTH_MAP,
-  FpsDisplay,
   HintDisplay,
   MarkerLabelsDisplay,
   MarkerManagerControl,
@@ -50,12 +49,19 @@ function formatCoord(value: number | undefined, suffix: string) {
   return `${value.toFixed(2)}${suffix}`;
 }
 
+function prefersCompactDemoChrome() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 720px)").matches;
+}
+
 function App() {
   const controllerRef = useRef<CartoonPlanetController | null>(null);
   const cancelIntroRef = useRef<(() => void) | null>(null);
   const [planetState, setPlanetState] = useState<GlobeState | null>(null);
   const [introPlaying, setIntroPlaying] = useState(false);
-  const [showAppControls, setShowAppControls] = useState(true);
+  const [showAppControls, setShowAppControls] = useState(
+    () => !prefersCompactDemoChrome(),
+  );
   const [showGlobeControls, setShowGlobeControls] = useState(true);
 
   const maps = useMemo(() => DEMO_MAPS, []);
@@ -92,127 +98,139 @@ function App() {
 
   return (
     <main className={rootClassName}>
-      <div className="demo-view-controls" role="group" aria-label="Display options">
-        <button
-          type="button"
-          className="demo-view-toggle"
-          aria-pressed={showAppControls}
-          onClick={() => setShowAppControls((visible) => !visible)}
+      <div className="demo-view-controls">
+        <span className="demo-view-fps" aria-label="Frame rate">
+          <span className="demo-view-fps-label">FPS</span>
+          <span className="demo-view-fps-value">{planetState?.fps ?? 0}</span>
+        </span>
+        <div
+          className="demo-view-toggles"
+          role="group"
+          aria-label="Display options"
         >
-          App UI
-        </button>
-        <button
-          type="button"
-          className="demo-view-toggle"
-          aria-pressed={showGlobeControls}
-          onClick={() => setShowGlobeControls((visible) => !visible)}
-        >
-          Globe UI
-        </button>
+          <button
+            type="button"
+            className="demo-view-toggle"
+            aria-pressed={showAppControls}
+            onClick={() => setShowAppControls((visible) => !visible)}
+          >
+            App UI
+          </button>
+          <button
+            type="button"
+            className="demo-view-toggle"
+            aria-pressed={showGlobeControls}
+            onClick={() => setShowGlobeControls((visible) => !visible)}
+          >
+            Globe UI
+          </button>
+        </div>
       </div>
 
       {showAppControls && (
-      <header className="demo-toolbar">
-        <div className="demo-toolbar-copy">
-          <h1>react-cartoon-planet</h1>
-          <p>
-            Sidebar controls are composable children. The toolbar below calls
-            the controller API.
-          </p>
-        </div>
-
-        <div className="demo-toolbar-groups">
-          <div className="demo-group">
-            <span className="demo-group-label">Intro</span>
-            <button
-              type="button"
-              className="demo-play-btn"
-              disabled={introPlaying}
-              aria-busy={introPlaying}
-              onClick={handlePlayIntro}
-            >
-              {introPlaying ? "Playing…" : "Play"}
-            </button>
+        <header className="demo-toolbar">
+          <div className="demo-toolbar-copy">
+            <h1>react-cartoon-planet</h1>
+            <p>
+              Sidebar controls are composable children. The toolbar below calls
+              the controller API.
+            </p>
           </div>
 
-          <div className="demo-group">
-            <span className="demo-group-label">Fly</span>
-            <button
-              type="button"
-              onClick={() =>
-                controllerRef.current?.flyTo(-74.006, 40.7128, 1_500)
-              }
-            >
-              NYC
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                controllerRef.current?.flyTo(139.6917, 35.6895, 1_500)
-              }
-            >
-              Tokyo
-            </button>
-            <button
-              type="button"
-              onClick={() => controllerRef.current?.flyTo(21.0122, 52.2297, 6)}
-            >
-              Warsaw landmarks
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                controllerRef.current?.flyTo(
-                  START_VIEWS.globe.lng,
-                  START_VIEWS.globe.lat,
-                  START_VIEWS.globe.alt_m,
-                  { duration: 900 },
-                )
-              }
-            >
-              Reset view
-            </button>
-          </div>
-
-          <div className="demo-group">
-            <span className="demo-group-label">Rotate</span>
-            <div className="demo-pad" role="group" aria-label="Rotate globe">
+          <div className="demo-toolbar-groups">
+            <div className="demo-group">
+              <span className="demo-group-label">Intro</span>
               <button
                 type="button"
-                className="demo-pad-btn demo-pad-up"
-                aria-label="Rotate north"
-                onClick={() => controllerRef.current?.rotateBy(0, 10)}
+                className="demo-play-btn"
+                disabled={introPlaying}
+                aria-busy={introPlaying}
+                onClick={handlePlayIntro}
               >
-                ↑
-              </button>
-              <button
-                type="button"
-                className="demo-pad-btn demo-pad-left"
-                aria-label="Rotate west"
-                onClick={() => controllerRef.current?.rotateBy(-15, 0)}
-              >
-                ←
-              </button>
-              <button
-                type="button"
-                className="demo-pad-btn demo-pad-right"
-                aria-label="Rotate east"
-                onClick={() => controllerRef.current?.rotateBy(15, 0)}
-              >
-                →
-              </button>
-              <button
-                type="button"
-                className="demo-pad-btn demo-pad-down"
-                aria-label="Rotate south"
-                onClick={() => controllerRef.current?.rotateBy(0, -10)}
-              >
-                ↓
+                {introPlaying ? "Playing…" : "Play"}
               </button>
             </div>
+
+            <div className="demo-group">
+              <span className="demo-group-label">Fly</span>
+              <button
+                type="button"
+                onClick={() =>
+                  controllerRef.current?.flyTo(-74.006, 40.7128, 1_500)
+                }
+              >
+                NYC
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  controllerRef.current?.flyTo(139.6917, 35.6895, 1_500)
+                }
+              >
+                Tokyo
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  controllerRef.current?.flyTo(21.0122, 52.2297, 6)
+                }
+              >
+                Warsaw landmarks
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  controllerRef.current?.flyTo(
+                    START_VIEWS.globe.lng,
+                    START_VIEWS.globe.lat,
+                    START_VIEWS.globe.alt_m,
+                    { duration: 900 },
+                  )
+                }
+              >
+                Reset view
+              </button>
+            </div>
+
+            <div className="demo-group">
+              <span className="demo-group-label">Rotate</span>
+              <div className="demo-pad" role="group" aria-label="Rotate globe">
+                <button
+                  type="button"
+                  className="demo-pad-btn demo-pad-up"
+                  aria-label="Rotate north"
+                  onClick={() => controllerRef.current?.rotateBy(0, 10)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="demo-pad-btn demo-pad-left"
+                  aria-label="Rotate west"
+                  onClick={() => controllerRef.current?.rotateBy(-15, 0)}
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  className="demo-pad-btn demo-pad-right"
+                  aria-label="Rotate east"
+                  onClick={() => controllerRef.current?.rotateBy(15, 0)}
+                >
+                  →
+                </button>
+                <button
+                  type="button"
+                  className="demo-pad-btn demo-pad-down"
+                  aria-label="Rotate south"
+                  onClick={() => controllerRef.current?.rotateBy(0, -10)}
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
       )}
 
       <section className="demo-canvas">
@@ -234,7 +252,6 @@ function App() {
         >
           {showGlobeControls && (
             <>
-              <FpsDisplay />
               <AltitudeDisplay />
               <ScaleBarDisplay />
               <MarkerLabelsDisplay />
@@ -252,14 +269,13 @@ function App() {
       </section>
 
       {showAppControls && (
-      <footer className="demo-status">
-        <span>lng {formatCoord(hud?.focusLng, "°")}</span>
-        <span>lat {formatCoord(hud?.focusLat, "°")}</span>
-        <span>alt {hud?.scaleLabel ?? "…"}</span>
-        <span>mode {planetState?.renderMode ?? "…"}</span>
-        <span>map {planetState?.planetMap ?? "…"}</span>
-        <span className="demo-status-fps">fps {planetState?.fps ?? 0}</span>
-      </footer>
+        <footer className="demo-status">
+          <span>lng {formatCoord(hud?.focusLng, "°")}</span>
+          <span>lat {formatCoord(hud?.focusLat, "°")}</span>
+          <span>alt {hud?.scaleLabel ?? "…"}</span>
+          <span>mode {planetState?.renderMode ?? "…"}</span>
+          <span>map {planetState?.planetMap ?? "…"}</span>
+        </footer>
       )}
     </main>
   );
