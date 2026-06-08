@@ -1,4 +1,3 @@
 [build]
-  base = "demo-app"
-  command = "pnpm run build"
-  publish = "dist"
+  command = "pnpm --filter demo-app build"
+  publish = "demo-app/dist"
