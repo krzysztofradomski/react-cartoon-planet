@@ -51,6 +51,23 @@ function addPickTarget(group, position, radius) {
   return pick;
 }
 
+/** Shared orbital plane basis used by both buildMarkerMesh and buildMarkers. */
+function computeOrbitBasis(marker, allMarkers) {
+  if (!marker.isOrbital || !marker.orbitNodeA || !marker.orbitNodeB) return null;
+  const nodeA = allMarkers.find((m) => m.id === marker.orbitNodeA);
+  const nodeB = allMarkers.find((m) => m.id === marker.orbitNodeB);
+  if (!nodeA || !nodeB) return null;
+  const uA = lngLatToVec3(nodeA.lng, nodeA.lat, 1).normalize();
+  const uB = lngLatToVec3(nodeB.lng, nodeB.lat, 1).normalize();
+  const cross = new THREE.Vector3().crossVectors(uA, uB);
+  const e1 = uA;
+  const e2 =
+    cross.length() > 0.01
+      ? new THREE.Vector3().crossVectors(cross.normalize(), e1).normalize()
+      : new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), e1).normalize();
+  return { e1, e2 };
+}
+
 export function buildMarkerMesh(marker, mode = 'surface', allMarkers = []) {
   const baseSize = marker.size || 0.024;
   const isCluster = !!marker.isCluster;
@@ -64,30 +81,18 @@ export function buildMarkerMesh(marker, mode = 'surface', allMarkers = []) {
   let e1 = up.clone();
   let e2;
 
-  if (marker.isOrbital && marker.orbitNodeA && marker.orbitNodeB) {
-    const nodeAObj = allMarkers.find((m) => m.id === marker.orbitNodeA);
-    const nodeBObj = allMarkers.find((m) => m.id === marker.orbitNodeB);
-    if (nodeAObj && nodeBObj) {
-      const uA = lngLatToVec3(nodeAObj.lng, nodeAObj.lat, 1).normalize();
-      const uB = lngLatToVec3(nodeBObj.lng, nodeBObj.lat, 1).normalize();
-      const cross = new THREE.Vector3().crossVectors(uA, uB);
-      e1.copy(uA);
-      if (cross.length() > 0.01) {
-        const normal = cross.normalize();
-        e2 = new THREE.Vector3().crossVectors(normal, e1).normalize();
-      } else {
-        const normal = new THREE.Vector3(0, 1, 0);
-        e2 = new THREE.Vector3().crossVectors(normal, e1).normalize();
-      }
-      const startAngle = hash(marker.lat || 0, marker.lng || 0) * Math.PI * 2;
-      up.copy(
-        e1
-          .clone()
-          .multiplyScalar(Math.cos(startAngle))
-          .add(e2.clone().multiplyScalar(Math.sin(startAngle)))
-          .normalize()
-      );
-    }
+  const orbitBasis = computeOrbitBasis(marker, allMarkers);
+  if (orbitBasis) {
+    e1 = orbitBasis.e1;
+    e2 = orbitBasis.e2;
+    const startAngle = hash(marker.lat || 0, marker.lng || 0) * Math.PI * 2;
+    up.copy(
+      e1
+        .clone()
+        .multiplyScalar(Math.cos(startAngle))
+        .add(e2.clone().multiplyScalar(Math.sin(startAngle)))
+        .normalize()
+    );
   }
 
   let mesh;
@@ -307,21 +312,9 @@ export function buildMarkers(markers: Marker[] = [], mode = 'surface', linksEnab
 
     if (marker.isOrbital) {
       const alt = marker.altitude || 1.18;
-      const nodeA = markers.find((m) => m.id === marker.orbitNodeA);
-      const nodeB = markers.find((m) => m.id === marker.orbitNodeB);
-      if (nodeA && nodeB) {
-        const uA = lngLatToVec3(nodeA.lng, nodeA.lat, 1).normalize();
-        const uB = lngLatToVec3(nodeB.lng, nodeB.lat, 1).normalize();
-        const cross = new THREE.Vector3().crossVectors(uA, uB);
-        let e1 = uA.clone();
-        let e2;
-        if (cross.length() > 0.01) {
-          const normal = cross.normalize();
-          e2 = new THREE.Vector3().crossVectors(normal, e1).normalize();
-        } else {
-          const normal = new THREE.Vector3(0, 1, 0);
-          e2 = new THREE.Vector3().crossVectors(normal, e1).normalize();
-        }
+      const orbitBasis = computeOrbitBasis(marker, markers);
+      if (orbitBasis) {
+        const { e1, e2 } = orbitBasis;
 
         const points = [];
         for (let step = 0; step <= 120; step++) {

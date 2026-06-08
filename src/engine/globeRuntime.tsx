@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import type { CartoonPlanetThree, CartoonPlanetUiOptions, GlobeEnginePort } from '../types';
+import type { CartoonPlanetThree, CartoonPlanetUiOptions, GlobeEnginePort, StartViewId } from '../types';
 import { GlobeController } from '../globeController';
 import { GlobeUiFromChildren, GlobeUiFromOptions } from '../components/globeUi/GlobeUi';
 import { CartoonPlanetProvider } from '../context/cartoonPlanetContext';
@@ -36,10 +36,16 @@ export function GlobeRuntime({
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [globeState, setGlobeState] = useState(() => controller.getState());
+  // Capture these at mount so that later changes don't tear down and rebuild the
+  // entire Three.js scene. startView is only used for the initial camera jumpTo;
+  // subsequent setStartView() calls already invoke flyTo directly. onSceneReady
+  // fires once after mount and is never re-invoked.
+  const startViewRef = useRef(globeState.startView);
+  const onSceneReadyRef = useRef(onSceneReady);
 
   useEffect(() => controller.subscribe(setGlobeState), [controller]);
 
-  const { renderMode, startView, placingMode } = globeState;
+  const { renderMode, placingMode } = globeState;
 
   useEffect(() => {
     if (enginePortRef.current) {
@@ -55,17 +61,17 @@ export function GlobeRuntime({
       mount,
       enginePortRef,
       controller,
-      startView,
-      onSceneReady,
+      startView: startViewRef.current,
+      onSceneReady: onSceneReadyRef.current,
     });
-  }, [controller, enginePortRef, startView, onSceneReady]);
+  }, [controller, enginePortRef]);
 
   const flyTo = useCallback(
     (lng: number, lat: number, alt_m: number) => controller.flyTo(lng, lat, alt_m),
     [controller]
   );
   const setInitialView = useCallback(
-    (view: typeof startView) => controller.setStartView(view),
+    (view: StartViewId) => controller.setStartView(view),
     [controller]
   );
   const selectRenderMode = useCallback(
