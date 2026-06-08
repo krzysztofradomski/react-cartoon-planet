@@ -7,6 +7,48 @@
   color: #e6ebff;
 }
 
+.demo-root--hide-app {
+  grid-template-rows: 1fr;
+}
+
+.demo-view-controls {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.demo-view-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(230, 235, 255, 0.72);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.demo-view-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.demo-view-toggle[aria-pressed="true"] {
+  border-color: rgba(99, 179, 255, 0.55);
+  background: rgba(56, 132, 255, 0.28);
+  color: #f0f4ff;
+}
+
 .demo-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -125,7 +167,10 @@
 }
 
 .demo-canvas {
+  position: relative;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .demo-status {
@@ -146,6 +191,17 @@
 @media (max-width: 720px) {
   .demo-toolbar {
     flex-direction: column;
+  }
+
+  .demo-view-controls {
+    top: auto;
+    right: auto;
+    bottom: 12px;
+    left: 12px;
+  }
+
+  .demo-root:not(.demo-root--hide-app) .demo-view-controls {
+    bottom: 72px;
   }
 
   .demo-status-fps {

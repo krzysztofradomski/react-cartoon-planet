@@ -59,6 +59,8 @@ function App() {
   const cancelIntroRef = useRef<(() => void) | null>(null);
   const [planetState, setPlanetState] = useState<GlobeState | null>(null);
   const [introPlaying, setIntroPlaying] = useState(false);
+  const [showAppControls, setShowAppControls] = useState(true);
+  const [showGlobeControls, setShowGlobeControls] = useState(true);
 
   const maps = useMemo(() => DEMO_MAPS, []);
   const renderModes = useMemo(() => DEMO_RENDER_MODES, []);
@@ -84,8 +86,36 @@ function App() {
     };
   }, []);
 
+  const rootClassName = [
+    "demo-root",
+    !showAppControls && "demo-root--hide-app",
+    !showGlobeControls && "demo-root--hide-globe",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <main className="demo-root">
+    <main className={rootClassName}>
+      <div className="demo-view-controls" role="group" aria-label="Display options">
+        <button
+          type="button"
+          className="demo-view-toggle"
+          aria-pressed={showAppControls}
+          onClick={() => setShowAppControls((visible) => !visible)}
+        >
+          App UI
+        </button>
+        <button
+          type="button"
+          className="demo-view-toggle"
+          aria-pressed={showGlobeControls}
+          onClick={() => setShowGlobeControls((visible) => !visible)}
+        >
+          Globe UI
+        </button>
+      </div>
+
+      {showAppControls && (
       <header className="demo-toolbar">
         <div className="demo-toolbar-copy">
           <h1>react-cartoon-planet</h1>
@@ -187,6 +217,7 @@ function App() {
           </div>
         </div>
       </header>
+      )}
 
       <section className="demo-canvas">
         <CartoonPlanet
@@ -206,21 +237,26 @@ function App() {
             three.scene.add(ring);
           }}
         >
-          <FpsDisplay />
-          <AltitudeDisplay />
-          <ScaleBarDisplay />
-          <MarkerLabelsDisplay />
-          <PlacingToastDisplay />
-          <HintDisplay />
-          <StartLevelControl />
-          <PlanetMapControl />
-          <RenderModeControl />
-          <OutlineStyleControl />
-          <QuickJumpControl />
-          <MarkerManagerControl />
+          {showGlobeControls && (
+            <>
+              <FpsDisplay />
+              <AltitudeDisplay />
+              <ScaleBarDisplay />
+              <MarkerLabelsDisplay />
+              <PlacingToastDisplay />
+              <HintDisplay />
+              <StartLevelControl />
+              <PlanetMapControl />
+              <RenderModeControl />
+              <OutlineStyleControl />
+              <QuickJumpControl />
+              <MarkerManagerControl />
+            </>
+          )}
         </CartoonPlanet>
       </section>
 
+      {showAppControls && (
       <footer className="demo-status">
         <span>lng {formatCoord(hud?.focusLng, "°")}</span>
         <span>lat {formatCoord(hud?.focusLat, "°")}</span>
@@ -229,6 +265,7 @@ function App() {
         <span>map {planetState?.planetMap ?? "…"}</span>
         <span className="demo-status-fps">fps {planetState?.fps ?? 0}</span>
       </footer>
+      )}
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import {
   Children,
+  Fragment,
   createContext,
   isValidElement,
   useContext,
@@ -61,18 +62,32 @@ function getChildSlot(child: ReactElement): CartoonPlanetSlot {
   return type.cartoonPlanetSlot ?? 'root';
 }
 
+function flattenUiChildren(children: ReactNode): ReactElement[] {
+  const flattened: ReactElement[] = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment) {
+      flattened.push(...flattenUiChildren((child.props as { children?: ReactNode }).children));
+      return;
+    }
+    flattened.push(child);
+  });
+
+  return flattened;
+}
+
 export function CartoonPlanetUiLayer({ children }: { children: ReactNode }) {
   const overlay: ReactNode[] = [];
   const root: ReactNode[] = [];
 
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
+  for (const child of flattenUiChildren(children)) {
     if (getChildSlot(child) === 'overlay') {
       overlay.push(child);
     } else {
       root.push(child);
     }
-  });
+  }
 
   return (
     <>

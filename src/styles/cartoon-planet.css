@@ -15,7 +15,7 @@
       color: var(--hud-fg);
       overflow: hidden;
     }
-    .root { position: relative; width: 100%; height: 100%; }
+    .root { position: relative; width: 100%; height: 100%; overflow: hidden; }
     .canvas-mount { position: absolute; inset: 0; }
     canvas { display: block; touch-action: none; cursor: grab; }
     canvas:active { cursor: grabbing; }
@@ -297,17 +297,16 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      pointer-events: none; /* Let clicks pass through empty spaces to rotate globe */
+      pointer-events: auto;
       overflow-y: auto;
       overflow-x: hidden;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      min-height: 0;
+      max-height: calc(100% - 32px);
       padding-right: 4px;
-    }
-    
-    /* Enable pointer events on panels inside the floating container */
-    .hud-overlay-container .panel,
-    .hud-overlay-container .segmented,
-    .hud-overlay-container button {
-      pointer-events: auto;
+      z-index: 5;
     }
 
     /* Style for modular floating panels */
@@ -378,6 +377,11 @@
     }
     
     /* Scrollbar styling for panels */
+    .hud-overlay-container {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+    }
+
     .hud-overlay-container::-webkit-scrollbar,
     .marker-list::-webkit-scrollbar {
       width: 4px;
