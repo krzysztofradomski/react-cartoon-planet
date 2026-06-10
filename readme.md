@@ -119,7 +119,7 @@ export function GlobeDemo() {
 }
 ```
 
-Give the canvas room to breathe — the globe fills its container (`width` / `height: 100%` on a sized parent works well).
+Give the canvas room to breathe — the globe fills its container (`width` / `height: 100%` on a sized parent works well) and tracks container resizes automatically via `ResizeObserver`, so collapsing surrounding panels never leaves the canvas stretched.
 
 ## Render modes
 

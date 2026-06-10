@@ -197,6 +197,8 @@ export function attachGlobeScene({
   const loadMap = () => mapCatalog.loadActive();
   scene.add(planet);
 
+  // Outer halo: back-side shell that reads as the glow *around* the limb.
+  // Opacity must go through a uniform — ShaderMaterial ignores `.opacity`.
   const atmoGeo = new THREE.SphereGeometry(1.06, 64, 48);
   const atmoMat = new THREE.ShaderMaterial({
     transparent: true,
@@ -205,6 +207,7 @@ export function attachGlobeScene({
     depthWrite: false,
     uniforms: {
       uColor: { value: new THREE.Color(0.45, 0.7, 1.0) },
+      uOpacity: { value: 0 },
     },
     vertexShader: `
         varying vec3 vNormal;
@@ -214,14 +217,48 @@ export function attachGlobeScene({
         }`,
     fragmentShader: `
         uniform vec3 uColor;
+        uniform float uOpacity;
         varying vec3 vNormal;
         void main() {
           float intensity = pow(0.7 - dot(vNormal, vec3(0,0,1.0)), 2.0);
-          gl_FragColor = vec4(uColor, 1.0) * intensity;
+          gl_FragColor = vec4(uColor, 1.0) * intensity * uOpacity;
         }`,
   });
   const atmo = new THREE.Mesh(atmoGeo, atmoMat);
   scene.add(atmo);
+
+  // Inner rim: fresnel glow hugging the surface so the planet edge picks up a
+  // soft atmospheric scatter when seen from orbit. Fades out with the halo.
+  const atmoRimGeo = new THREE.SphereGeometry(1.012, 64, 48);
+  const atmoRimMat = new THREE.ShaderMaterial({
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    uniforms: {
+      uColor: { value: new THREE.Color(0.45, 0.7, 1.0) },
+      uOpacity: { value: 0 },
+    },
+    vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vView = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }`,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          float fresnel = pow(1.0 - abs(dot(normalize(vView), normalize(vNormal))), 3.0);
+          gl_FragColor = vec4(uColor, fresnel * uOpacity);
+        }`,
+  });
+  const atmoRim = new THREE.Mesh(atmoRimGeo, atmoRimMat);
+  scene.add(atmoRim);
 
   function applyMapAtmosphere() {
     const mapOpts = getMapOptions();
@@ -247,6 +284,7 @@ export function attachGlobeScene({
   const unsubscribeMap = mapCatalog.onChange(onPlanetMapChanged);
 
   const stars = buildStarfield();
+  stars.material.uniforms.uPixelRatio.value = renderer.getPixelRatio();
   scene.add(stars);
 
   const controlsInstance = new GlobeControls(camera, renderer.domElement);
@@ -332,12 +370,17 @@ export function attachGlobeScene({
   function onResize() {
     const rw = mount.clientWidth;
     const rh = mount.clientHeight;
+    if (!rw || !rh) return;
     renderer.setSize(rw, rh);
     camera.aspect = rw / rh;
     camera.updateProjectionMatrix();
     syncOutlineResolution();
   }
   window.addEventListener('resize', onResize);
+  // The mount can resize without a window resize (surrounding layout/panel
+  // changes); observe it directly so the canvas never renders stretched.
+  const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
+  resizeObserver?.observe(mount);
 
   const unsubscribeState = controller.subscribe((state) => {
     if (
@@ -391,9 +434,11 @@ export function attachGlobeScene({
       const { lat, lng } = vec3ToLngLat(dir);
 
       const atmoStrength = atmo.userData.strength != null ? atmo.userData.strength : 1;
-      atmoMat.opacity = THREE.MathUtils.clamp((alt / 1_000_000) * atmoStrength, 0, 1);
-      stars.material.opacity = THREE.MathUtils.clamp(alt / 8_000_000, 0, 1);
-      stars.material.transparent = true;
+      const atmoOpacity = THREE.MathUtils.clamp((alt / 1_000_000) * atmoStrength, 0, 1);
+      atmoMat.uniforms.uOpacity.value = atmoOpacity;
+      atmoRimMat.uniforms.uOpacity.value = atmoOpacity * 0.85;
+      stars.material.uniforms.uOpacity.value = THREE.MathUtils.clamp(alt / 8_000_000, 0, 1);
+      stars.material.uniforms.uTime.value = performance.now() * 0.001;
 
       const currentMode = surfaceGroup.userData.mode;
       const modeObj = renderCatalog.get(currentMode);
@@ -402,6 +447,7 @@ export function attachGlobeScene({
         : new THREE.Color(0.45, 0.7, 1.0);
       _mapAtmoColor.set(getMapOptions().atmosphereColor || '#73b3ff');
       atmoMat.uniforms.uColor.value.copy(modeAtmo).lerp(_mapAtmoColor, 0.35);
+      atmoRimMat.uniforms.uColor.value.copy(atmoMat.uniforms.uColor.value);
 
       renderCatalog.animate(currentMode, surfaceGroup, { alt, time: performance.now() });
 
@@ -520,6 +566,7 @@ export function attachGlobeScene({
   return () => {
     cancelAnimationFrame(raf);
     window.removeEventListener('resize', onResize);
+    resizeObserver?.disconnect();
     unsubscribeMap();
     unsubscribeState();
     renderer.domElement.removeEventListener('click', handleCanvasClick);

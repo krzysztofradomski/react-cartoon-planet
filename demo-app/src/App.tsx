@@ -7,6 +7,7 @@ import {
   CartoonPlanet,
   EARTH_MAP,
   HintDisplay,
+  LinksDisplay,
   MarkerLabelsDisplay,
   MarkerManagerControl,
   OutlineStyleControl,
@@ -132,8 +133,9 @@ function App() {
           <div className="demo-toolbar-copy">
             <h1>react-cartoon-planet</h1>
             <p>
-              Sidebar controls are composable children. The toolbar below calls
-              the controller API.
+              Fly from orbit to ground level, restyle the planet, and drop
+              markers. Sidebar widgets are composable children — this toolbar
+              drives the controller API.
             </p>
           </div>
 
@@ -261,6 +263,7 @@ function App() {
               <PlanetMapControl />
               <RenderModeControl />
               <OutlineStyleControl />
+              <LinksDisplay />
               <QuickJumpControl />
               <MarkerManagerControl />
             </>
@@ -270,11 +273,34 @@ function App() {
 
       {showAppControls && (
         <footer className="demo-status">
-          <span>lng {formatCoord(hud?.focusLng, "°")}</span>
-          <span>lat {formatCoord(hud?.focusLat, "°")}</span>
-          <span>alt {hud?.scaleLabel ?? "…"}</span>
-          <span>mode {planetState?.renderMode ?? "…"}</span>
-          <span>map {planetState?.planetMap ?? "…"}</span>
+          <span className="demo-stat">
+            <span className="demo-stat-label">lng</span>
+            <span className="demo-stat-value">
+              {formatCoord(hud?.focusLng, "°")}
+            </span>
+          </span>
+          <span className="demo-stat">
+            <span className="demo-stat-label">lat</span>
+            <span className="demo-stat-value">
+              {formatCoord(hud?.focusLat, "°")}
+            </span>
+          </span>
+          <span className="demo-stat">
+            <span className="demo-stat-label">alt</span>
+            <span className="demo-stat-value">{hud?.scaleLabel ?? "…"}</span>
+          </span>
+          <span className="demo-stat">
+            <span className="demo-stat-label">mode</span>
+            <span className="demo-stat-value">
+              {planetState?.renderMode ?? "…"}
+            </span>
+          </span>
+          <span className="demo-stat">
+            <span className="demo-stat-label">map</span>
+            <span className="demo-stat-value">
+              {planetState?.planetMap ?? "…"}
+            </span>
+          </span>
         </footer>
       )}
     </main>
