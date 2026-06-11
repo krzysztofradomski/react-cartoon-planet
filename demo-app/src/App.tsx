@@ -190,14 +190,7 @@ function App() {
 
       {showAppControls && (
         <header className="demo-toolbar">
-          <div className="demo-toolbar-copy">
-            <h1>react-cartoon-planet</h1>
-            <p>
-              Fly from orbit to ground level, restyle the planet, and drop
-              markers. Sidebar widgets are composable children — this toolbar
-              drives the controller API.
-            </p>
-          </div>
+          <h1 className="demo-toolbar-title">react-cartoon-planet</h1>
 
           <div className="demo-toolbar-groups">
             <div className="demo-group">
@@ -281,10 +274,14 @@ function App() {
 
             <div className="demo-group">
               <span className="demo-group-label">Rotate</span>
-              <div className="demo-pad" role="group" aria-label="Rotate globe">
+              <div
+                className="demo-pad demo-pad--inline"
+                role="group"
+                aria-label="Rotate globe"
+              >
                 <button
                   type="button"
-                  className="demo-pad-btn demo-pad-up"
+                  className="demo-pad-btn"
                   aria-label="Rotate north"
                   onClick={() => controllerRef.current?.rotateBy(0, 10)}
                 >
@@ -292,7 +289,7 @@ function App() {
                 </button>
                 <button
                   type="button"
-                  className="demo-pad-btn demo-pad-left"
+                  className="demo-pad-btn"
                   aria-label="Rotate west"
                   onClick={() => controllerRef.current?.rotateBy(-15, 0)}
                 >
@@ -300,7 +297,7 @@ function App() {
                 </button>
                 <button
                   type="button"
-                  className="demo-pad-btn demo-pad-right"
+                  className="demo-pad-btn"
                   aria-label="Rotate east"
                   onClick={() => controllerRef.current?.rotateBy(15, 0)}
                 >
@@ -308,7 +305,7 @@ function App() {
                 </button>
                 <button
                   type="button"
-                  className="demo-pad-btn demo-pad-down"
+                  className="demo-pad-btn"
                   aria-label="Rotate south"
                   onClick={() => controllerRef.current?.rotateBy(0, -10)}
                 >

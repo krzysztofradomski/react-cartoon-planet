@@ -113,15 +113,18 @@
 .demo-toolbar {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  padding-right: max(12px, min(240px, 32vw));
   border-bottom: 1px solid var(--demo-line);
   background: var(--demo-glass);
   backdrop-filter: blur(12px) saturate(1.25);
   -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 /* Hairline glow along the toolbar's bottom edge */
@@ -142,57 +145,61 @@
   pointer-events: none;
 }
 
-.demo-toolbar-copy h1 {
+.demo-toolbar-title {
   margin: 0;
-  font-size: 16px;
+  flex: 0 0 auto;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  white-space: nowrap;
   background: linear-gradient(90deg, #9fdcff, #5aa6ff 45%, #b18cff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.demo-toolbar-copy p {
-  margin: 5px 0 0;
-  max-width: 42rem;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--demo-ink-dim);
-}
-
 .demo-toolbar-groups {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 16px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .demo-group {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding-right: 10px;
+  border-right: 1px solid rgba(148, 178, 255, 0.14);
+}
+
+.demo-group:last-child {
+  padding-right: 0;
+  border-right: none;
 }
 
 .demo-group-label {
-  width: 100%;
-  font-size: 11px;
+  flex: 0 0 auto;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--demo-ink-faint);
+  white-space: nowrap;
 }
 
 .demo-group button {
   border: 1px solid rgba(148, 178, 255, 0.22);
   background: rgba(255, 255, 255, 0.05);
   color: #f0f4ff;
-  border-radius: 9px;
-  padding: 6px 11px;
-  font-size: 12px;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -243,41 +250,19 @@
   box-shadow: 0 0 26px rgba(90, 166, 255, 0.5);
 }
 
-.demo-pad {
-  display: grid;
-  grid-template-columns: repeat(3, 32px);
-  grid-template-rows: repeat(3, 32px);
-  gap: 4px;
+.demo-pad--inline {
+  display: flex;
+  gap: 3px;
 }
 
 .demo-group button.demo-pad-btn {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   display: grid;
   place-items: center;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
-}
-
-.demo-pad-up {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.demo-pad-left {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.demo-pad-right {
-  grid-column: 3;
-  grid-row: 2;
-}
-
-.demo-pad-down {
-  grid-column: 2;
-  grid-row: 3;
 }
 
 .demo-canvas {
@@ -423,41 +408,33 @@
 
 @media (max-width: 720px) {
   .demo-toolbar {
-    flex-direction: column;
-    max-height: min(34vh, 240px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    padding: 8px 12px;
-    gap: 10px;
-    padding-top: max(8px, env(safe-area-inset-top));
+    padding: 5px 10px;
+    padding-right: max(10px, min(220px, 38vw));
+    padding-top: max(5px, env(safe-area-inset-top));
+    gap: 8px;
   }
 
-  .demo-toolbar-copy p {
-    display: none;
-  }
-
-  .demo-toolbar-copy h1 {
-    font-size: 13px;
+  .demo-toolbar-title {
+    font-size: 12px;
   }
 
   .demo-toolbar-groups {
-    width: 100%;
-    gap: 10px;
+    gap: 8px;
   }
 
   .demo-group {
-    width: 100%;
-    gap: 6px;
-  }
-
-  .demo-group-label {
-    width: auto;
-    flex: 0 0 auto;
+    gap: 5px;
+    padding-right: 8px;
   }
 
   .demo-group button {
-    padding: 8px 10px;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .demo-group button.demo-pad-btn {
+    width: 24px;
+    height: 24px;
     font-size: 11px;
   }
 
