@@ -355,7 +355,7 @@ The render loop is persistent — anything you add draws every frame. The globe 
 
 ## Demo app included
 
-The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, the "Warsaw landmarks" button drills into the ground-level marker cluster, and `onSceneReady` adds a custom Three.js ring to show direct scene access.
+The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, and the "Warsaw landmarks" button drills into the ground-level marker cluster. It also exercises the newer APIs: a **Layers** group toggles the `dayNight`, `clouds`, and `bloom` props at runtime, clicking any marker opens an info card via `onMarkerClick` (without suppressing the default fly-to), the **Vapor** map plugs a custom neon streak-cloud `GlobeLayerBuilder` into an Earth-shaped synthwave planet, and `onSceneReady` exposes the live scene as `window.__three` for devtools tinkering.
 
 ```bash
 cd demo-app && pnpm install && pnpm dev
