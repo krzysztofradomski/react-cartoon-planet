@@ -65,6 +65,8 @@ function App() {
   );
   const [showGlobeControls, setShowGlobeControls] = useState(true);
   const [bloomOn, setBloomOn] = useState(true);
+  const [dayNightOn, setDayNightOn] = useState(true);
+  const [cloudsOn, setCloudsOn] = useState(true);
   const [clickedMarker, setClickedMarker] = useState<Marker | null>(null);
 
   const maps = useMemo(() => DEMO_MAPS, []);
@@ -126,14 +128,6 @@ function App() {
             onClick={() => setShowGlobeControls((visible) => !visible)}
           >
             Globe UI
-          </button>
-          <button
-            type="button"
-            className="demo-view-toggle"
-            aria-pressed={bloomOn}
-            onClick={() => setBloomOn((enabled) => !enabled)}
-          >
-            Bloom
           </button>
         </div>
       </div>
@@ -205,6 +199,31 @@ function App() {
             </div>
 
             <div className="demo-group">
+              <span className="demo-group-label">Layers</span>
+              <button
+                type="button"
+                aria-pressed={dayNightOn}
+                onClick={() => setDayNightOn((enabled) => !enabled)}
+              >
+                Day/Night
+              </button>
+              <button
+                type="button"
+                aria-pressed={cloudsOn}
+                onClick={() => setCloudsOn((enabled) => !enabled)}
+              >
+                Clouds
+              </button>
+              <button
+                type="button"
+                aria-pressed={bloomOn}
+                onClick={() => setBloomOn((enabled) => !enabled)}
+              >
+                Bloom
+              </button>
+            </div>
+
+            <div className="demo-group">
               <span className="demo-group-label">Rotate</span>
               <div className="demo-pad" role="group" aria-label="Rotate globe">
                 <button
@@ -253,6 +272,8 @@ function App() {
           initialState={initialState}
           onStateChange={setPlanetState}
           bloom={bloomOn}
+          dayNight={dayNightOn}
+          clouds={cloudsOn}
           onSceneReady={(three) => {
             // Live Three.js objects — exposed for devtools tinkering
             // (e.g. `__three.scene.add(...)` from the console).

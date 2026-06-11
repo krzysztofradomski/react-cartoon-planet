@@ -51,6 +51,8 @@ export type AttachGlobeSceneOptions = {
   controller: GlobeController;
   startView: StartViewId;
   bloom?: boolean | { strength?: number; radius?: number; threshold?: number } | null;
+  dayNight?: boolean;
+  clouds?: boolean;
   onSceneReady?: (three: any) => void;
 };
 
@@ -60,6 +62,8 @@ export function attachGlobeScene({
   controller,
   startView,
   bloom,
+  dayNight,
+  clouds,
   onSceneReady,
 }: AttachGlobeSceneOptions): () => void {
   const w = mount.clientWidth;
@@ -299,12 +303,17 @@ export function attachGlobeScene({
   let terminator = null;
   let cityLights = null;
   let dayNightKey = '';
+  // Runtime toggles (props on <CartoonPlanet>); the mode's getDayNight() and
+  // the map's clouds/nightLights flags still gate what each one can show.
+  let dayNightEnabled = dayNight !== false;
+  let cloudsEnabled = clouds !== false;
 
   function rebuildDayNight() {
     const modeObj = renderCatalog.get(currentRenderModeName());
-    const dayNightOn = !!modeObj?.getDayNight?.();
+    const modeSupportsDayNight = !!modeObj?.getDayNight?.();
+    const dayNightOn = dayNightEnabled && modeSupportsDayNight;
     const mapOpts = getMapOptions();
-    const wantClouds = dayNightOn && !!mapOpts.clouds;
+    const wantClouds = cloudsEnabled && modeSupportsDayNight && !!mapOpts.clouds;
     const wantLights = dayNightOn && !!mapOpts.nightLights;
     const continents = mapCatalog.getContinents();
     const nextKey = `${dayNightOn}:${wantClouds}:${wantLights}:${mapCatalog.getActiveName()}:${continents.length}`;
@@ -430,6 +439,14 @@ export function attachGlobeScene({
       rebuildMarkers(list, surfaceGroup.userData.mode, altM, mpp);
     },
     setBloom: applyBloom,
+    setDayNight: (enabled) => {
+      dayNightEnabled = enabled !== false;
+      rebuildDayNight();
+    },
+    setClouds: (enabled) => {
+      cloudsEnabled = enabled !== false;
+      rebuildDayNight();
+    },
   });
 
   onSceneReady?.(three);

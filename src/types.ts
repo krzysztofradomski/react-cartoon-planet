@@ -179,6 +179,8 @@ export interface GlobeEnginePort {
   rebuildPlanetMap?: () => void;
   setMarkers?: (markers: Marker[]) => void;
   setBloom?: (bloom: boolean | CartoonPlanetBloomOptions | null | undefined) => void;
+  setDayNight?: (enabled: boolean) => void;
+  setClouds?: (enabled: boolean) => void;
   three?: CartoonPlanetThree;
 }
 
@@ -269,6 +271,16 @@ export interface CartoonPlanetProps {
    * tuning options. Toggleable at runtime; additive modes like Cyber pop hard.
    */
   bloom?: boolean | CartoonPlanetBloomOptions;
+  /**
+   * Day/night cycle (drifting terminator shadow + night-side city lights) on
+   * modes/maps that support it. Toggleable at runtime. Default: true.
+   */
+  dayNight?: boolean;
+  /**
+   * Animated cloud layer on maps that enable it (and modes that support
+   * day/night). Toggleable at runtime. Default: true.
+   */
+  clouds?: boolean;
   /**
    * Fires when a marker (or cluster) is clicked, before the default fly-to.
    * Return `false` to suppress the default behavior.

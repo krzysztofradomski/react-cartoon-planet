@@ -148,6 +148,14 @@ Render modes can opt in to a **day/night cycle** via `getDayNight() { return tru
 
 All three layers fade out as you descend toward ground level, so they never obstruct the close-up view — markers stay fully readable day and night.
 
+Like `bloom`, both are runtime-toggleable props (no scene rebuild — flip them freely from your UI):
+
+```tsx
+<CartoonPlanet dayNight={showDayNight} clouds={showClouds} bloom={showBloom} />
+```
+
+Both default to `true`; the mode's `getDayNight()` and the map's `clouds` / `nightLights` flags still decide what each toggle can show.
+
 ## Bloom
 
 Pass the `bloom` prop for an `UnrealBloomPass` post-processing glow — neon-heavy modes like Cyber pop hard:
@@ -309,6 +317,8 @@ The render loop is persistent — anything you add draws every frame. The globe 
 | `renderModes`         | `GlobeRenderModeDefinition[]`            | Defaults to all four built-ins                 |
 | `initialState`        | `CartoonPlanetInitialState`              | Map, mode, start view, markers                 |
 | `bloom`               | `boolean \| CartoonPlanetBloomOptions`   | Post-processing glow; runtime-toggleable       |
+| `dayNight`            | `boolean`                                | Terminator + city lights; runtime-toggleable   |
+| `clouds`              | `boolean`                                | Cloud layer; runtime-toggleable                |
 | `onStateChange`       | `(state: GlobeState) => void`            | HUD, fps, active map/mode                      |
 | `onReady`             | `(controller) => void`                   | Fires when engine is ready                     |
 | `onSceneReady`        | `(three) => void`                        | Live Three.js objects on mount                 |

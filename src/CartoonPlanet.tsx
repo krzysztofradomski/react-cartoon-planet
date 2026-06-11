@@ -99,6 +99,8 @@ export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetPr
     ui,
     initialState,
     bloom,
+    dayNight,
+    clouds,
     onReady,
     onStateChange,
     onSceneReady,
@@ -161,6 +163,8 @@ export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetPr
         ui={uiOptions}
         hasExplicitUi={hasExplicitUi}
         bloom={bloom}
+        dayNight={dayNight}
+        clouds={clouds}
         onSceneReady={onSceneReady}
         onMarkerClick={onMarkerClick}
         onMarkerHover={onMarkerHover}

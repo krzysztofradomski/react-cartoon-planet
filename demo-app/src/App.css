@@ -224,6 +224,12 @@
   box-shadow: none;
 }
 
+.demo-group button[aria-pressed="true"] {
+  border-color: rgba(99, 179, 255, 0.55);
+  background: rgba(56, 132, 255, 0.28);
+  box-shadow: 0 0 14px rgba(80, 150, 255, 0.25);
+}
+
 .demo-group button.demo-play-btn {
   border-color: rgba(99, 179, 255, 0.6);
   background: linear-gradient(135deg, rgba(56, 132, 255, 0.45), rgba(139, 108, 255, 0.4));
@@ -460,6 +466,14 @@
     right: max(8px, env(safe-area-inset-right));
     bottom: auto;
     left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: min(70vw, 320px);
+  }
+
+  .demo-view-toggles {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .demo-status {

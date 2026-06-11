@@ -32,6 +32,8 @@ export function GlobeRuntime({
   ui,
   hasExplicitUi,
   bloom,
+  dayNight,
+  clouds,
   onSceneReady,
   onMarkerClick,
   onMarkerHover,
@@ -42,6 +44,8 @@ export function GlobeRuntime({
   ui: CartoonPlanetUiOptions;
   hasExplicitUi: boolean;
   bloom?: boolean | CartoonPlanetBloomOptions;
+  dayNight?: boolean;
+  clouds?: boolean;
   onSceneReady?: (three: CartoonPlanetThree) => void;
   onMarkerClick?: (marker: Marker) => boolean | void;
   onMarkerHover?: (marker: Marker | null) => void;
@@ -56,6 +60,8 @@ export function GlobeRuntime({
   const startViewRef = useRef(globeState.startView);
   const onSceneReadyRef = useRef(onSceneReady);
   const initialBloomRef = useRef(bloom);
+  const initialDayNightRef = useRef(dayNight);
+  const initialCloudsRef = useRef(clouds);
   // Latest-callback refs so the engine always calls the current handler without
   // re-binding (or worse, re-attaching the scene) on every parent render.
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -86,6 +92,8 @@ export function GlobeRuntime({
       controller,
       startView: startViewRef.current,
       bloom: initialBloomRef.current,
+      dayNight: initialDayNightRef.current,
+      clouds: initialCloudsRef.current,
       onSceneReady: onSceneReadyRef.current,
     });
   }, [controller, enginePortRef]);
@@ -99,6 +107,14 @@ export function GlobeRuntime({
   useEffect(() => {
     enginePortRef.current?.setBloom?.(bloom);
   }, [bloom, enginePortRef]);
+
+  useEffect(() => {
+    enginePortRef.current?.setDayNight?.(dayNight !== false);
+  }, [dayNight, enginePortRef]);
+
+  useEffect(() => {
+    enginePortRef.current?.setClouds?.(clouds !== false);
+  }, [clouds, enginePortRef]);
 
   const flyTo = useCallback(
     (lng: number, lat: number, alt_m: number) => controller.flyTo(lng, lat, alt_m),
