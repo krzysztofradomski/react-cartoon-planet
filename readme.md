@@ -119,7 +119,7 @@ export function GlobeDemo() {
 }
 ```
 
-Give the canvas room to breathe — the globe fills its container (`width` / `height: 100%` on a sized parent works well).
+Give the canvas room to breathe — the globe fills its container (`width` / `height: 100%` on a sized parent works well) and tracks container resizes automatically via `ResizeObserver`, so collapsing surrounding panels never leaves the canvas stretched.
 
 ## Render modes
 
@@ -139,6 +139,60 @@ Cyber mode in motion:
 
 Presets: `SURFACE_RENDER_MODE` (Solid), `DOTS_RENDER_MODE`, `HYBRID_RENDER_MODE`, `CYBERPUNK_RENDER_MODE`, or the full `BUILTIN_RENDER_MODES` array.
 
+## Day/night cycle, clouds & city lights
+
+Render modes can opt in to a **day/night cycle** via `getDayNight() { return true; }` (the built-in Solid mode does). When active, a soft terminator shadow drifts slowly around the globe (full cycle ≈ 3.5 min), and the active map can enable two extra layers:
+
+- `clouds: true` — a procedural, slowly drifting cloud sphere (on for `EARTH_MAP`)
+- `nightLights: true` — warm city lights scattered over land, visible only on the night side (on for `EARTH_MAP`)
+
+All three layers fade out as you descend toward ground level, so they never obstruct the close-up view — markers stay fully readable day and night.
+
+Like `bloom`, both are runtime-toggleable props (no scene rebuild — flip them freely from your UI):
+
+```tsx
+<CartoonPlanet dayNight={showDayNight} clouds={showClouds} bloom={showBloom} />
+```
+
+Both default to `true`; the mode's `getDayNight()` and the map's `clouds` / `nightLights` flags still decide what each toggle can show.
+
+### Plug in your own layer generators
+
+`clouds` and `nightLights` are composable the same way render modes are: pass a **`GlobeLayerBuilder`** function instead of `true` and the globe uses your layer in place of the built-in one. The builder receives `{ map, continents, pixelRatio, sunDir }` and returns a Three.js `Object3D` (unit sphere — surface ≈ radius `1.0`, built-in clouds sit at `1.018`). Attach `userData.update = ({ alt, time, sunDir }) => …` for per-frame animation; the object is disposed automatically when the map or mode changes.
+
+```tsx
+import { THREE, buildCloudLayer } from "react-cartoon-planet";
+import type { GlobeLayerBuilder, PlanetMapDefinition } from "react-cartoon-planet";
+
+const myClouds: GlobeLayerBuilder = ({ sunDir }) => {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1.02, 64, 48),
+    new THREE.MeshBasicMaterial({ map: myCloudTexture(), transparent: true, depthWrite: false }),
+  );
+  mesh.renderOrder = 3; // clouds slot: above the surface, below the terminator
+  mesh.userData.update = ({ alt }) => {
+    mesh.rotation.y += 0.0002;
+    mesh.material.opacity = THREE.MathUtils.clamp((alt - 60_000) / 700_000, 0, 0.9);
+  };
+  return mesh;
+};
+
+const MY_MAP: PlanetMapDefinition = { ...EARTH_MAP, name: "Mine", clouds: myClouds };
+```
+
+The built-in builders (`buildCloudLayer`, `buildCityLights`, `buildTerminator`) are exported too, so you can wrap or extend them. The demo's **Vapor** map plugs in a custom neon streak-cloud generator this way. (The atmosphere halo and starfield aren't pluggable yet — drop replacements into the scene via `onSceneReady` if you need to restyle those.)
+
+## Bloom
+
+Pass the `bloom` prop for an `UnrealBloomPass` post-processing glow — neon-heavy modes like Cyber pop hard:
+
+```tsx
+<CartoonPlanet bloom />                                  // defaults
+<CartoonPlanet bloom={{ strength: 0.8, radius: 0.6, threshold: 0.1 }} />
+```
+
+It's toggleable at runtime (just flip the prop), and rendering falls back to the plain renderer when off. Color output is identical in both paths (the composer ends with an `OutputPass`).
+
 ## Coastlines
 
 Continent borders render as **screen-space vector lines** (not a baked texture stroke), so they stay a crisp, constant thickness from orbit all the way to ground level instead of ballooning as you zoom in. Toggle bold vs. thin via `OutlineStyleControl`, `controller.setFatOutlines(boolean)`, or `initialState.fatOutlines`:
@@ -154,6 +208,8 @@ Markers are screen-constant **pins** anchored to the surface — readable from o
 - **Ground level** — keep zooming (down to ~5 m) to see individuals at their true coordinates.
 - **Placement** — `startPlacing()` (or `MarkerManagerControl`) → click the globe to drop a marker exactly where the cursor lands. The built-in editor previews it live on the map (size, color, label, shape); **Save** finalizes, **Cancel** discards.
 - **Links** — `setLinksEnabled(true)` draws arcs between markers; toggle in the UI with `LinksDisplay`.
+- **Hover** — markers grow smoothly under the pointer and the cursor switches to a pointer; subscribe with the `onMarkerHover` prop (fires with the marker, then `null` on leave).
+- **Click hook** — `onMarkerClick={(marker) => …}` fires before the default fly-to (clusters included — check `marker.isCluster`). Return `false` to suppress the default and handle the click entirely yourself (e.g. open your own popover).
 
 ## Planet maps
 
@@ -172,6 +228,8 @@ Bundled land/maria geometry comes from third-party datasets. Full attribution, d
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `earth-land.geojson` | [Natural Earth](https://www.naturalearthdata.com/) `ne_110m_land` — [source GeoJSON](https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson) (Public Domain) |
 | `moon-maria.geojson` | [LROC Global Mare](https://pds.lroc.wisc.edu/) boundaries — converted from the official shapefile ZIP with `shpjs`                                                                                       |
+
+Bundled GeoJSON is simplified for globe-scale rendering with `scripts/slim-geojson.mjs` (coordinates rounded to 4 decimals, sub-pixel ring points dropped) — the moon dataset shrinks from 18 MB to ~6 MB with no visible difference at the globe's 4096px texture resolution.
 
 ## Controller API
 
@@ -279,20 +337,25 @@ The render loop is persistent — anything you add draws every frame. The globe 
 
 ## Props
 
-| Prop                  | Type                          | Notes                          |
-| --------------------- | ----------------------------- | ------------------------------ |
-| `maps`                | `PlanetMapDefinition[]`       | Defaults to Earth + Moon       |
-| `renderModes`         | `GlobeRenderModeDefinition[]` | Defaults to all four built-ins |
-| `initialState`        | `CartoonPlanetInitialState`   | Map, mode, start view, markers |
-| `onStateChange`       | `(state: GlobeState) => void` | HUD, fps, active map/mode      |
-| `onReady`             | `(controller) => void`        | Fires when engine is ready     |
-| `onSceneReady`        | `(three) => void`             | Live Three.js objects on mount |
-| `className` / `style` | —                             | Root container                 |
-| `children`            | React nodes                   | Composable UI (see above)      |
+| Prop                  | Type                                     | Notes                                          |
+| --------------------- | ---------------------------------------- | ---------------------------------------------- |
+| `maps`                | `PlanetMapDefinition[]`                  | Defaults to Earth + Moon                       |
+| `renderModes`         | `GlobeRenderModeDefinition[]`            | Defaults to all four built-ins                 |
+| `initialState`        | `CartoonPlanetInitialState`              | Map, mode, start view, markers                 |
+| `bloom`               | `boolean \| CartoonPlanetBloomOptions`   | Post-processing glow; runtime-toggleable       |
+| `dayNight`            | `boolean`                                | Terminator + city lights; runtime-toggleable   |
+| `clouds`              | `boolean`                                | Cloud layer; runtime-toggleable                |
+| `onStateChange`       | `(state: GlobeState) => void`            | HUD, fps, active map/mode                      |
+| `onReady`             | `(controller) => void`                   | Fires when engine is ready                     |
+| `onSceneReady`        | `(three) => void`                        | Live Three.js objects on mount                 |
+| `onMarkerClick`       | `(marker) => boolean \| void`            | Before default fly-to; `false` suppresses it   |
+| `onMarkerHover`       | `(marker \| null) => void`               | Pointer enters / leaves a marker               |
+| `className` / `style` | —                                        | Root container                                 |
+| `children`            | React nodes                              | Composable UI (see above)                      |
 
 ## Demo app included
 
-The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, the "Warsaw landmarks" button drills into the ground-level marker cluster, and `onSceneReady` adds a custom Three.js ring to show direct scene access.
+The [`demo-app`](./demo-app) folder is a Vite + React playground that mirrors the quick start above — toolbar buttons call `flyTo`, `rotateBy`, and a scripted intro across all render modes, and the "Warsaw landmarks" button drills into the ground-level marker cluster. It also exercises the newer APIs: a **Layers** group toggles the `dayNight`, `clouds`, and `bloom` props at runtime, clicking any marker opens an info card via `onMarkerClick` (without suppressing the default fly-to), the **Vapor** map plugs a custom neon streak-cloud `GlobeLayerBuilder` into an Earth-shaped synthwave planet, and `onSceneReady` exposes the live scene as `window.__three` for devtools tinkering.
 
 ```bash
 cd demo-app && pnpm install && pnpm dev

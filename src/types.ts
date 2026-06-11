@@ -3,6 +3,34 @@ import type { Group, Scene, PerspectiveCamera, WebGLRenderer } from 'three';
 export type StartViewId = 'globe' | 'ground';
 export type MarkerShape = 'orb' | 'cube' | 'bar' | 'icon' | 'cluster';
 
+/** Per-frame context passed to a layer's `userData.update` hook. */
+export interface GlobeLayerUpdateContext {
+  /** Camera altitude above the surface, in meters. */
+  alt: number;
+  /** `performance.now()` timestamp. */
+  time: number;
+  /** Shared sun direction (unit vector, world space); drives the day/night cycle. */
+  sunDir: import('three').Vector3;
+}
+
+/** Build-time context passed to a {@link GlobeLayerBuilder}. */
+export interface GlobeLayerContext {
+  map: PlanetMapOptions & { name: string };
+  continents: Continent[];
+  pixelRatio: number;
+  /** Shared sun direction; mutated in place every frame, safe to close over. */
+  sunDir: import('three').Vector3;
+}
+
+/**
+ * Custom sky-layer factory (clouds, city lights, …) — the layer counterpart of
+ * a render mode's `renderFunction`. Return an Object3D built from the
+ * package's re-exported `THREE` (unit sphere: surface ≈ radius 1.0). Attach
+ * `userData.update = (ctx: GlobeLayerUpdateContext) => void` for per-frame
+ * animation. The returned object is disposed when the map or mode changes.
+ */
+export type GlobeLayerBuilder = (context: GlobeLayerContext) => import('three').Object3D;
+
 /** GeoJSON or other map source referenced by local or remote URL. */
 export interface PlanetMapDefinition {
   name: string;
@@ -13,6 +41,17 @@ export interface PlanetMapDefinition {
   landColor?: string;
   atmosphereColor?: string;
   atmosphereStrength?: number;
+  /**
+   * Cloud layer (shown when the render mode supports day/night): `true` for
+   * the built-in drifting procedural clouds, or a {@link GlobeLayerBuilder}
+   * to plug in your own generator.
+   */
+  clouds?: boolean | GlobeLayerBuilder;
+  /**
+   * Night-side city lights (shown when the render mode supports day/night):
+   * `true` for the built-in warm land lights, or a {@link GlobeLayerBuilder}.
+   */
+  nightLights?: boolean | GlobeLayerBuilder;
 }
 
 /** Passed to custom renderFunction implementations. */
@@ -32,7 +71,22 @@ export interface GlobeRenderModeDefinition {
   renderFunction: (config: GlobeRenderConfig) => Group;
   getAtmosphereColor?: () => import('three').Color;
   getMarkerMode?: () => string;
+  /**
+   * Opt in to the day/night cycle: a slowly drifting terminator shadow, plus
+   * cloud and city-light layers when the active map enables them.
+   */
+  getDayNight?: () => boolean;
   animate?: (group: Group, context: { alt: number; time: number }) => void;
+}
+
+/** Tuning for the optional bloom post-processing pass. */
+export interface CartoonPlanetBloomOptions {
+  /** Glow intensity. Default: 0.55. */
+  strength?: number;
+  /** Glow spread. Default: 0.5. */
+  radius?: number;
+  /** Luminance below which pixels don't bloom. Default: 0.12. */
+  threshold?: number;
 }
 
 export interface Marker {
@@ -151,10 +205,17 @@ export interface GlobeControlsLike {
 export interface GlobeEnginePort {
   isPlacingMode?: boolean;
   onGlobeClick?: ((lng: number, lat: number) => void) | null;
+  /** App-level marker click hook; return `false` to suppress the default fly-to. */
+  onMarkerClick?: ((marker: Marker) => boolean | void) | null;
+  /** Fires with the hovered marker, or `null` when the pointer leaves it. */
+  onMarkerHover?: ((marker: Marker | null) => void) | null;
   controls?: GlobeControlsLike;
   setRenderMode?: (modeName: string) => void;
   rebuildPlanetMap?: () => void;
   setMarkers?: (markers: Marker[]) => void;
+  setBloom?: (bloom: boolean | CartoonPlanetBloomOptions | null | undefined) => void;
+  setDayNight?: (enabled: boolean) => void;
+  setClouds?: (enabled: boolean) => void;
   three?: CartoonPlanetThree;
 }
 
@@ -240,6 +301,28 @@ export interface CartoonPlanetProps {
   onStateChange?: (state: GlobeState) => void;
   /** Fires when the Three.js scene is mounted, with the live Three.js objects. */
   onSceneReady?: (three: CartoonPlanetThree) => void;
+  /**
+   * Bloom post-processing (UnrealBloomPass). `true` for defaults, or pass
+   * tuning options. Toggleable at runtime; additive modes like Cyber pop hard.
+   */
+  bloom?: boolean | CartoonPlanetBloomOptions;
+  /**
+   * Day/night cycle (drifting terminator shadow + night-side city lights) on
+   * modes/maps that support it. Toggleable at runtime. Default: true.
+   */
+  dayNight?: boolean;
+  /**
+   * Animated cloud layer on maps that enable it (and modes that support
+   * day/night). Toggleable at runtime. Default: true.
+   */
+  clouds?: boolean;
+  /**
+   * Fires when a marker (or cluster) is clicked, before the default fly-to.
+   * Return `false` to suppress the default behavior.
+   */
+  onMarkerClick?: (marker: Marker) => boolean | void;
+  /** Fires with the marker under the pointer, or `null` when it leaves. */
+  onMarkerHover?: (marker: Marker | null) => void;
   /** Composable HUD and control panels rendered inside the globe viewport. */
   children?: React.ReactNode;
 }
@@ -261,6 +344,8 @@ export interface PlanetMapOptions {
   landColor: string;
   atmosphereColor: string;
   atmosphereStrength: number;
+  clouds?: boolean | GlobeLayerBuilder;
+  nightLights?: boolean | GlobeLayerBuilder;
   label?: string;
 }
 

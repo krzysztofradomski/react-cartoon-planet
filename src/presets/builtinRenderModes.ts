@@ -28,6 +28,9 @@ export const SURFACE_RENDER_MODE: GlobeRenderModeDefinition = {
   getMarkerMode() {
     return 'surface';
   },
+  getDayNight() {
+    return true;
+  },
 };
 
 export const DOTS_RENDER_MODE: GlobeRenderModeDefinition = {

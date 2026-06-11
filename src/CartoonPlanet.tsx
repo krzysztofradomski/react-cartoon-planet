@@ -21,6 +21,7 @@ import {
 import './styles/cartoon-planet.css';
 
 export type {
+  CartoonPlanetBloomOptions,
   CartoonPlanetController,
   CartoonPlanetInitialState,
   CartoonPlanetProps,
@@ -30,6 +31,9 @@ export type {
   GlobeRenderConfig,
   GlobeAutoRotateOptions,
   GlobeFlyOptions,
+  GlobeLayerBuilder,
+  GlobeLayerContext,
+  GlobeLayerUpdateContext,
   GlobeRenderModeDefinition,
   GlobeRotateOptions,
   GlobeRuntimeRef,
@@ -90,7 +94,23 @@ function mergeUiOptions(ui?: Partial<CartoonPlanetUiOptions>): {
 
 
 export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetProps>(function CartoonPlanet(
-  { className, style, maps, renderModes, ui, initialState, onReady, onStateChange, onSceneReady, children },
+  {
+    className,
+    style,
+    maps,
+    renderModes,
+    ui,
+    initialState,
+    bloom,
+    dayNight,
+    clouds,
+    onReady,
+    onStateChange,
+    onSceneReady,
+    onMarkerClick,
+    onMarkerHover,
+    children,
+  },
   ref
 ) {
   const enginePortRef = useRef<GlobeEnginePort>({});
@@ -145,7 +165,12 @@ export const CartoonPlanet = forwardRef<CartoonPlanetController, CartoonPlanetPr
         enginePortRef={enginePortRef}
         ui={uiOptions}
         hasExplicitUi={hasExplicitUi}
+        bloom={bloom}
+        dayNight={dayNight}
+        clouds={clouds}
         onSceneReady={onSceneReady}
+        onMarkerClick={onMarkerClick}
+        onMarkerHover={onMarkerHover}
       >
         {children}
       </GlobeRuntime>

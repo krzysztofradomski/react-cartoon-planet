@@ -255,10 +255,16 @@ export function updateMarkerVisualScale(markerGroup, altMeters, camera, screenH 
   const K = (2 * SCREEN_PIN_RADIUS_PX * Math.tan(fovRad / 2)) / Math.max(1, screenH);
 
   for (const item of items) {
+    // Hover state set by the scene host's pointermove raycast; ease toward the
+    // target so markers grow/shrink smoothly instead of popping.
+    const hoverT = item.userData.hoverT ?? 0;
+    item.userData.hoverT = hoverT + ((item.userData.hoverTarget ?? 0) - hoverT) * 0.18;
+    const hoverScale = 1 + 0.22 * item.userData.hoverT;
+
     // Orbital markers are repositioned/animated in the render loop; keep the
     // original altitude-tiered scaling and don't fight it.
     if (item.userData?.isOrbital) {
-      const factor = markerScaleForAltitude(altMeters);
+      const factor = markerScaleForAltitude(altMeters) * hoverScale;
       item.traverse((child) => {
         if (child.userData?.isMarkerVisual) {
           child.scale.setScalar((child.userData.baseScale ?? 1) * factor);
@@ -272,7 +278,7 @@ export function updateMarkerVisualScale(markerGroup, altMeters, camera, screenH 
     if (!up || !item.userData?.anchorWorld) continue;
 
     const d = camera ? camera.position.distanceTo(item.userData.anchorWorld) : 1;
-    const f = (K * d) / MARKER_REF_SIZE;
+    const f = ((K * d) / MARKER_REF_SIZE) * hoverScale;
 
     for (const child of item.children) {
       if (!child.userData?.isMarkerPart) continue;
