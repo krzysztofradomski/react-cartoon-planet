@@ -64,6 +64,8 @@ function App() {
     () => !prefersCompactDemoChrome(),
   );
   const [showGlobeControls, setShowGlobeControls] = useState(true);
+  const [bloomOn, setBloomOn] = useState(true);
+  const [clickedMarker, setClickedMarker] = useState<Marker | null>(null);
 
   const maps = useMemo(() => DEMO_MAPS, []);
   const renderModes = useMemo(() => DEMO_RENDER_MODES, []);
@@ -124,6 +126,14 @@ function App() {
             onClick={() => setShowGlobeControls((visible) => !visible)}
           >
             Globe UI
+          </button>
+          <button
+            type="button"
+            className="demo-view-toggle"
+            aria-pressed={bloomOn}
+            onClick={() => setBloomOn((enabled) => !enabled)}
+          >
+            Bloom
           </button>
         </div>
       </div>
@@ -242,6 +252,16 @@ function App() {
           renderModes={renderModes}
           initialState={initialState}
           onStateChange={setPlanetState}
+          bloom={bloomOn}
+          onSceneReady={(three) => {
+            // Live Three.js objects — exposed for devtools tinkering
+            // (e.g. `__three.scene.add(...)` from the console).
+            (window as unknown as Record<string, unknown>).__three = three;
+          }}
+          onMarkerClick={(marker) => {
+            // Show the info card; returning nothing keeps the default fly-to.
+            setClickedMarker(marker);
+          }}
           // onSceneReady={(three) => {
           //   // Example: drop a custom object into the globe scene (import THREE from react-cartoon-planet).
           //   // const ring = new THREE.Mesh(
@@ -269,6 +289,34 @@ function App() {
             </>
           )}
         </CartoonPlanet>
+
+        {clickedMarker && (
+          <aside className="demo-marker-card" aria-live="polite">
+            <span
+              className="demo-marker-card-dot"
+              style={{ background: clickedMarker.color ?? "#ff5e3a" }}
+            />
+            <div className="demo-marker-card-body">
+              <strong>
+                {clickedMarker.isCluster
+                  ? `${clickedMarker.clusterCount} clustered landmarks`
+                  : clickedMarker.label}
+              </strong>
+              <span>
+                {clickedMarker.lat.toFixed(4)}°, {clickedMarker.lng.toFixed(4)}
+                ° · via onMarkerClick
+              </span>
+            </div>
+            <button
+              type="button"
+              className="demo-marker-card-close"
+              aria-label="Dismiss marker details"
+              onClick={() => setClickedMarker(null)}
+            >
+              ×
+            </button>
+          </aside>
+        )}
       </section>
 
       {showAppControls && (

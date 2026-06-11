@@ -52,6 +52,8 @@ export function buildStarfield() {
       uPixelRatio: { value: 1 },
     },
     vertexShader: `
+        #include <common>
+        #include <logdepthbuf_pars_vertex>
         attribute float aSize;
         attribute vec2 aTwinkle;
         uniform float uTime;
@@ -64,18 +66,22 @@ export function buildStarfield() {
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = aSize * uPixelRatio * (120.0 / -mv.z);
           gl_Position = projectionMatrix * mv;
+          #include <logdepthbuf_vertex>
         }`,
     fragmentShader: `
+        #include <common>
+        #include <logdepthbuf_pars_fragment>
         uniform float uOpacity;
         varying vec3 vColor;
         varying float vTwinkle;
         void main() {
+          #include <logdepthbuf_fragment>
           vec2 uv = gl_PointCoord - 0.5;
           float d = length(uv);
           // Bright core with a soft halo so big stars bloom instead of
           // rendering as hard squares.
-          float core = smoothstep(0.5, 0.06, d);
-          float halo = smoothstep(0.5, 0.0, d) * 0.35;
+          float core = 1.0 - smoothstep(0.06, 0.5, d);
+          float halo = (1.0 - smoothstep(0.0, 0.5, d)) * 0.35;
           float a = (core + halo) * vTwinkle * uOpacity;
           if (a < 0.004) discard;
           gl_FragColor = vec4(vColor, a);

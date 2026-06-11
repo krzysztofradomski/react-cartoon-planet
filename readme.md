@@ -139,6 +139,26 @@ Cyber mode in motion:
 
 Presets: `SURFACE_RENDER_MODE` (Solid), `DOTS_RENDER_MODE`, `HYBRID_RENDER_MODE`, `CYBERPUNK_RENDER_MODE`, or the full `BUILTIN_RENDER_MODES` array.
 
+## Day/night cycle, clouds & city lights
+
+Render modes can opt in to a **day/night cycle** via `getDayNight() { return true; }` (the built-in Solid mode does). When active, a soft terminator shadow drifts slowly around the globe (full cycle ≈ 3.5 min), and the active map can enable two extra layers:
+
+- `clouds: true` — a procedural, slowly drifting cloud sphere (on for `EARTH_MAP`)
+- `nightLights: true` — warm city lights scattered over land, visible only on the night side (on for `EARTH_MAP`)
+
+All three layers fade out as you descend toward ground level, so they never obstruct the close-up view — markers stay fully readable day and night.
+
+## Bloom
+
+Pass the `bloom` prop for an `UnrealBloomPass` post-processing glow — neon-heavy modes like Cyber pop hard:
+
+```tsx
+<CartoonPlanet bloom />                                  // defaults
+<CartoonPlanet bloom={{ strength: 0.8, radius: 0.6, threshold: 0.1 }} />
+```
+
+It's toggleable at runtime (just flip the prop), and rendering falls back to the plain renderer when off. Color output is identical in both paths (the composer ends with an `OutputPass`).
+
 ## Coastlines
 
 Continent borders render as **screen-space vector lines** (not a baked texture stroke), so they stay a crisp, constant thickness from orbit all the way to ground level instead of ballooning as you zoom in. Toggle bold vs. thin via `OutlineStyleControl`, `controller.setFatOutlines(boolean)`, or `initialState.fatOutlines`:
@@ -154,6 +174,8 @@ Markers are screen-constant **pins** anchored to the surface — readable from o
 - **Ground level** — keep zooming (down to ~5 m) to see individuals at their true coordinates.
 - **Placement** — `startPlacing()` (or `MarkerManagerControl`) → click the globe to drop a marker exactly where the cursor lands. The built-in editor previews it live on the map (size, color, label, shape); **Save** finalizes, **Cancel** discards.
 - **Links** — `setLinksEnabled(true)` draws arcs between markers; toggle in the UI with `LinksDisplay`.
+- **Hover** — markers grow smoothly under the pointer and the cursor switches to a pointer; subscribe with the `onMarkerHover` prop (fires with the marker, then `null` on leave).
+- **Click hook** — `onMarkerClick={(marker) => …}` fires before the default fly-to (clusters included — check `marker.isCluster`). Return `false` to suppress the default and handle the click entirely yourself (e.g. open your own popover).
 
 ## Planet maps
 
@@ -172,6 +194,8 @@ Bundled land/maria geometry comes from third-party datasets. Full attribution, d
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `earth-land.geojson` | [Natural Earth](https://www.naturalearthdata.com/) `ne_110m_land` — [source GeoJSON](https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson) (Public Domain) |
 | `moon-maria.geojson` | [LROC Global Mare](https://pds.lroc.wisc.edu/) boundaries — converted from the official shapefile ZIP with `shpjs`                                                                                       |
+
+Bundled GeoJSON is simplified for globe-scale rendering with `scripts/slim-geojson.mjs` (coordinates rounded to 4 decimals, sub-pixel ring points dropped) — the moon dataset shrinks from 18 MB to ~6 MB with no visible difference at the globe's 4096px texture resolution.
 
 ## Controller API
 
@@ -279,16 +303,19 @@ The render loop is persistent — anything you add draws every frame. The globe 
 
 ## Props
 
-| Prop                  | Type                          | Notes                          |
-| --------------------- | ----------------------------- | ------------------------------ |
-| `maps`                | `PlanetMapDefinition[]`       | Defaults to Earth + Moon       |
-| `renderModes`         | `GlobeRenderModeDefinition[]` | Defaults to all four built-ins |
-| `initialState`        | `CartoonPlanetInitialState`   | Map, mode, start view, markers |
-| `onStateChange`       | `(state: GlobeState) => void` | HUD, fps, active map/mode      |
-| `onReady`             | `(controller) => void`        | Fires when engine is ready     |
-| `onSceneReady`        | `(three) => void`             | Live Three.js objects on mount |
-| `className` / `style` | —                             | Root container                 |
-| `children`            | React nodes                   | Composable UI (see above)      |
+| Prop                  | Type                                     | Notes                                          |
+| --------------------- | ---------------------------------------- | ---------------------------------------------- |
+| `maps`                | `PlanetMapDefinition[]`                  | Defaults to Earth + Moon                       |
+| `renderModes`         | `GlobeRenderModeDefinition[]`            | Defaults to all four built-ins                 |
+| `initialState`        | `CartoonPlanetInitialState`              | Map, mode, start view, markers                 |
+| `bloom`               | `boolean \| CartoonPlanetBloomOptions`   | Post-processing glow; runtime-toggleable       |
+| `onStateChange`       | `(state: GlobeState) => void`            | HUD, fps, active map/mode                      |
+| `onReady`             | `(controller) => void`                   | Fires when engine is ready                     |
+| `onSceneReady`        | `(three) => void`                        | Live Three.js objects on mount                 |
+| `onMarkerClick`       | `(marker) => boolean \| void`            | Before default fly-to; `false` suppresses it   |
+| `onMarkerHover`       | `(marker \| null) => void`               | Pointer enters / leaves a marker               |
+| `className` / `style` | —                                        | Root container                                 |
+| `children`            | React nodes                              | Composable UI (see above)                      |
 
 ## Demo app included
 

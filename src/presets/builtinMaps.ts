@@ -15,6 +15,8 @@ export const EARTH_MAP: PlanetMapDefinition = {
   landColor: '#3aa94e',
   atmosphereColor: '#73b3ff',
   atmosphereStrength: 1,
+  clouds: true,
+  nightLights: true,
 };
 
 export const MOON_MAP: PlanetMapDefinition = {

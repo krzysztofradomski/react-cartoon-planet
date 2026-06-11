@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // @ts-nocheck
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { GlobeControls } from '../globeControls';
 import { buildPlanetSurface } from '../builders/planetSurface';
 import { buildStarfield } from '../builders/starfield';
+import { buildTerminator, buildCityLights, buildCloudLayer } from '../builders/dayNight';
 import { buildMarkers, orientToSurface, projectMarkerLabels, findMarkerFromObject, updateMarkerVisualScale } from '../builders/markers';
 import { resolveDisplayMarkers } from '../markers/markerDisplay';
 import { updateContinentOutlineResolution } from '../builders/continentOutline';
@@ -45,6 +50,7 @@ export type AttachGlobeSceneOptions = {
   enginePortRef: GlobeEnginePortRef;
   controller: GlobeController;
   startView: StartViewId;
+  bloom?: boolean | { strength?: number; radius?: number; threshold?: number } | null;
   onSceneReady?: (three: any) => void;
 };
 
@@ -53,6 +59,7 @@ export function attachGlobeScene({
   enginePortRef,
   controller,
   startView,
+  bloom,
   onSceneReady,
 }: AttachGlobeSceneOptions): () => void {
   const w = mount.clientWidth;
@@ -210,16 +217,22 @@ export function attachGlobeScene({
       uOpacity: { value: 0 },
     },
     vertexShader: `
+        #include <common>
+        #include <logdepthbuf_pars_vertex>
         varying vec3 vNormal;
         void main() {
           vNormal = normalize(normalMatrix * normal);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          #include <logdepthbuf_vertex>
         }`,
     fragmentShader: `
+        #include <common>
+        #include <logdepthbuf_pars_fragment>
         uniform vec3 uColor;
         uniform float uOpacity;
         varying vec3 vNormal;
         void main() {
+          #include <logdepthbuf_fragment>
           float intensity = pow(0.7 - dot(vNormal, vec3(0,0,1.0)), 2.0);
           gl_FragColor = vec4(uColor, 1.0) * intensity * uOpacity;
         }`,
@@ -239,6 +252,8 @@ export function attachGlobeScene({
       uOpacity: { value: 0 },
     },
     vertexShader: `
+        #include <common>
+        #include <logdepthbuf_pars_vertex>
         varying vec3 vNormal;
         varying vec3 vView;
         void main() {
@@ -246,13 +261,17 @@ export function attachGlobeScene({
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           vView = normalize(-mv.xyz);
           gl_Position = projectionMatrix * mv;
+          #include <logdepthbuf_vertex>
         }`,
     fragmentShader: `
+        #include <common>
+        #include <logdepthbuf_pars_fragment>
         uniform vec3 uColor;
         uniform float uOpacity;
         varying vec3 vNormal;
         varying vec3 vView;
         void main() {
+          #include <logdepthbuf_fragment>
           float fresnel = pow(1.0 - abs(dot(normalize(vView), normalize(vNormal))), 3.0);
           gl_FragColor = vec4(uColor, fresnel * uOpacity);
         }`,
@@ -268,11 +287,64 @@ export function attachGlobeScene({
   }
   applyMapAtmosphere();
 
+  // Day/night cycle: a shared sun direction drives the terminator shadow and
+  // the night-side city lights; an independent cloud sphere drifts above the
+  // surface. Active only when the render mode opts in via getDayNight() and
+  // the map enables the matching layers.
+  const sunDir = new THREE.Vector3(1, 0.3, 0.55).normalize();
+  const dayNightGroup = new THREE.Group();
+  dayNightGroup.userData.kind = 'day-night';
+  planet.add(dayNightGroup);
+  let cloudLayer = null; // cached — map-independent, expensive canvas
+  let terminator = null;
+  let cityLights = null;
+  let dayNightKey = '';
+
+  function rebuildDayNight() {
+    const modeObj = renderCatalog.get(currentRenderModeName());
+    const dayNightOn = !!modeObj?.getDayNight?.();
+    const mapOpts = getMapOptions();
+    const wantClouds = dayNightOn && !!mapOpts.clouds;
+    const wantLights = dayNightOn && !!mapOpts.nightLights;
+    const continents = mapCatalog.getContinents();
+    const nextKey = `${dayNightOn}:${wantClouds}:${wantLights}:${mapCatalog.getActiveName()}:${continents.length}`;
+    if (nextKey === dayNightKey) return;
+    dayNightKey = nextKey;
+
+    if (terminator) {
+      dayNightGroup.remove(terminator);
+      disposeObject3D(terminator);
+      terminator = null;
+    }
+    if (cityLights) {
+      dayNightGroup.remove(cityLights);
+      disposeObject3D(cityLights);
+      cityLights = null;
+    }
+    if (cloudLayer) cloudLayer.visible = wantClouds;
+
+    if (dayNightOn) {
+      terminator = buildTerminator(sunDir);
+      dayNightGroup.add(terminator);
+    }
+    if (wantLights) {
+      cityLights = buildCityLights(continents, renderer.getPixelRatio());
+      cityLights.material.uniforms.uSunDir.value = sunDir;
+      dayNightGroup.add(cityLights);
+    }
+    if (wantClouds && !cloudLayer) {
+      cloudLayer = buildCloudLayer();
+      dayNightGroup.add(cloudLayer);
+    }
+  }
+  rebuildDayNight();
+
   if (loadMap) {
     loadMap()
       .then(() => {
         rebuildContinents();
         applyMapAtmosphere();
+        rebuildDayNight();
       })
       .catch((err) => console.warn('Planet map data fetch failed; using fallback.', err));
   }
@@ -280,6 +352,7 @@ export function attachGlobeScene({
   function onPlanetMapChanged() {
     rebuildContinents();
     applyMapAtmosphere();
+    rebuildDayNight();
   }
   const unsubscribeMap = mapCatalog.onChange(onPlanetMapChanged);
 
@@ -291,6 +364,41 @@ export function attachGlobeScene({
   controls = controlsInstance;
   const initialView = START_VIEWS[startView] || START_VIEWS.globe;
   controlsInstance.jumpTo(initialView.lng, initialView.lat, 1 + initialView.alt_m / EARTH_RADIUS_M);
+
+  // Optional bloom post-processing, toggleable at runtime via the engine port.
+  // The OutputPass keeps the composer path color-identical (sRGB) to the
+  // direct renderer.render() path.
+  let composer = null;
+  let bloomPass = null;
+  function applyBloom(next) {
+    if (!next) {
+      bloomPass?.dispose?.();
+      composer?.dispose?.();
+      composer = null;
+      bloomPass = null;
+      return;
+    }
+    const opts = typeof next === 'object' ? next : {};
+    const strength = opts.strength ?? 0.55;
+    const radius = opts.radius ?? 0.5;
+    const threshold = opts.threshold ?? 0.12;
+    if (composer && bloomPass) {
+      bloomPass.strength = strength;
+      bloomPass.radius = radius;
+      bloomPass.threshold = threshold;
+      return;
+    }
+    const cw = mount.clientWidth || w;
+    const ch = mount.clientHeight || h;
+    composer = new EffectComposer(renderer);
+    composer.setPixelRatio(renderer.getPixelRatio());
+    composer.setSize(cw, ch);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(cw, ch), strength, radius, threshold);
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+  }
+  applyBloom(bloom);
 
   // Live Three.js handles for consumers (controller.getThree() / onSceneReady).
   const three = {
@@ -307,28 +415,76 @@ export function attachGlobeScene({
   bindEnginePort(enginePortRef, {
     controls: controlsInstance,
     three,
-    setRenderMode: (mode) => rebuildSurface(surfaceGroup.userData.outlinePx || 12, mode),
+    setRenderMode: (mode) => {
+      rebuildSurface(surfaceGroup.userData.outlinePx || 12, mode);
+      rebuildDayNight();
+    },
     rebuildPlanetMap: () => {
       rebuildContinents();
       applyMapAtmosphere();
+      rebuildDayNight();
     },
     setMarkers: (nextMarkers) => {
       const list = Array.isArray(nextMarkers) ? nextMarkers : [];
       const { altM, mpp } = getViewMetrics();
       rebuildMarkers(list, surfaceGroup.userData.mode, altM, mpp);
     },
+    setBloom: applyBloom,
   });
 
   onSceneReady?.(three);
 
   function handleMarkerPick(marker) {
     if (!marker) return;
+    // App-level hook runs first; returning false suppresses the default fly-to.
+    const onMarkerClick = enginePortRef.current?.onMarkerClick;
+    if (onMarkerClick && onMarkerClick(marker) === false) return;
     if (marker.isCluster) {
       controller.flyTo(marker.lng, marker.lat, marker.frameAltitudeM ?? 450);
       return;
     }
     controller.flyToMarker(marker.id);
   }
+
+  let hoveredMarkerId = null;
+  let lastHoverCheck = 0;
+  function handlePointerMove(e) {
+    const now = performance.now();
+    if (now - lastHoverCheck < 33) return;
+    lastHoverCheck = now;
+    if (enginePortRef.current?.isPlacingMode) return;
+    const markerGroup = markerRoot.userData.markerGroup;
+    if (!markerGroup) return;
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    _raycaster.setFromCamera(mouse, camera);
+
+    let hovered = null;
+    const hits = _raycaster.intersectObjects(markerGroup.children, true);
+    for (const hit of hits) {
+      const marker = findMarkerFromObject(hit.object);
+      if (marker) {
+        hovered = marker;
+        break;
+      }
+    }
+
+    const hoveredId = hovered ? hovered.id ?? hovered.label : null;
+    for (const item of markerGroup.userData.items || []) {
+      item.userData.hoverTarget = hoveredId != null && item.userData.marker === hovered ? 1 : 0;
+    }
+    renderer.domElement.style.cursor = hovered ? 'pointer' : '';
+
+    if (hoveredId !== hoveredMarkerId) {
+      hoveredMarkerId = hoveredId;
+      enginePortRef.current?.onMarkerHover?.(hovered);
+    }
+  }
+  renderer.domElement.addEventListener('pointermove', handlePointerMove);
 
   function handleCanvasClick(e) {
     const rect = renderer.domElement.getBoundingClientRect();
@@ -372,6 +528,7 @@ export function attachGlobeScene({
     const rh = mount.clientHeight;
     if (!rw || !rh) return;
     renderer.setSize(rw, rh);
+    composer?.setSize(rw, rh);
     camera.aspect = rw / rh;
     camera.updateProjectionMatrix();
     syncOutlineResolution();
@@ -388,6 +545,7 @@ export function attachGlobeScene({
       !!state.fatOutlines !== !!surfaceGroup.userData.fatOutlines
     ) {
       rebuildSurface(surfaceGroup.userData.outlinePx || 12, state.renderMode);
+      rebuildDayNight();
     }
   });
 
@@ -448,6 +606,23 @@ export function attachGlobeScene({
       _mapAtmoColor.set(getMapOptions().atmosphereColor || '#73b3ff');
       atmoMat.uniforms.uColor.value.copy(modeAtmo).lerp(_mapAtmoColor, 0.35);
       atmoRimMat.uniforms.uColor.value.copy(atmoMat.uniforms.uColor.value);
+
+      // Day/night: precess the sun slowly (full cycle ≈ 3.5 min) so the
+      // terminator and city lights drift across the globe. Layers fade out on
+      // approach to ground level so they never obstruct the close-up view.
+      const sunAngle = performance.now() * 0.00003;
+      sunDir.set(Math.cos(sunAngle), 0.3, Math.sin(sunAngle)).normalize();
+      if (terminator) {
+        terminator.material.uniforms.uOpacity.value =
+          THREE.MathUtils.clamp(alt / 900_000, 0, 1) * 0.78;
+      }
+      if (cityLights) {
+        cityLights.material.uniforms.uOpacity.value = THREE.MathUtils.clamp(alt / 400_000, 0, 1);
+      }
+      if (cloudLayer && cloudLayer.visible) {
+        cloudLayer.rotation.y += 0.00016;
+        cloudLayer.material.opacity = THREE.MathUtils.clamp((alt - 60_000) / 700_000, 0, 0.85);
+      }
 
       renderCatalog.animate(currentMode, surfaceGroup, { alt, time: performance.now() });
 
@@ -555,7 +730,11 @@ export function attachGlobeScene({
         });
       }
 
-      renderer.render(scene, camera);
+      if (composer) {
+        composer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
     } catch (e) {
       console.error('tick error', e);
     }
@@ -570,6 +749,8 @@ export function attachGlobeScene({
     unsubscribeMap();
     unsubscribeState();
     renderer.domElement.removeEventListener('click', handleCanvasClick);
+    renderer.domElement.removeEventListener('pointermove', handlePointerMove);
+    applyBloom(null);
     renderer.dispose();
     mount.removeChild(renderer.domElement);
     clearEnginePort(enginePortRef);

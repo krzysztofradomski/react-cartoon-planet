@@ -15,6 +15,8 @@ interface MapEntry {
   landColor: string;
   atmosphereColor: string;
   atmosphereStrength: number;
+  clouds: boolean;
+  nightLights: boolean;
   continents: Continent[] | null;
   _loaded: boolean;
 }
@@ -108,6 +110,8 @@ export class MapCatalog {
       landColor: def.landColor ?? LAND_COLOR,
       atmosphereColor: def.atmosphereColor ?? '#73b3ff',
       atmosphereStrength: def.atmosphereStrength ?? 1,
+      clouds: !!def.clouds,
+      nightLights: !!def.nightLights,
       continents: def.continents ?? null,
       _loaded: !!def.continents,
     });
@@ -118,14 +122,18 @@ export class MapCatalog {
   }
 
   getAll(): PlanetMapDefinition[] {
-    return Array.from(this._maps.values()).map(({ name, url, oceanColor, landColor, atmosphereColor, atmosphereStrength }) => ({
-      name,
-      url,
-      oceanColor,
-      landColor,
-      atmosphereColor,
-      atmosphereStrength,
-    }));
+    return Array.from(this._maps.values()).map(
+      ({ name, url, oceanColor, landColor, atmosphereColor, atmosphereStrength, clouds, nightLights }) => ({
+        name,
+        url,
+        oceanColor,
+        landColor,
+        atmosphereColor,
+        atmosphereStrength,
+        clouds,
+        nightLights,
+      })
+    );
   }
 
   getActive() {
@@ -151,6 +159,8 @@ export class MapCatalog {
       landColor: map.landColor!,
       atmosphereColor: map.atmosphereColor!,
       atmosphereStrength: map.atmosphereStrength!,
+      clouds: !!map.clouds,
+      nightLights: !!map.nightLights,
       label: map.name,
     };
   }

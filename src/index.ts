@@ -3,6 +3,7 @@ export { CartoonPlanet } from './CartoonPlanet';
 // avoid duplicate-instance issues (mismatched `instanceof`, separate WebGL state).
 export * as THREE from 'three';
 export type {
+  CartoonPlanetBloomOptions,
   CartoonPlanetController,
   CartoonPlanetInitialState,
   CartoonPlanetProps,
