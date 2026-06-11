@@ -1,4 +1,4 @@
-import type { Continent, PlanetMapDefinition, PlanetMapOptions } from '../types';
+import type { Continent, GlobeLayerBuilder, PlanetMapDefinition, PlanetMapOptions } from '../types';
 
 const LAND_COLOR = '#3aa94e';
 
@@ -15,8 +15,8 @@ interface MapEntry {
   landColor: string;
   atmosphereColor: string;
   atmosphereStrength: number;
-  clouds: boolean;
-  nightLights: boolean;
+  clouds: boolean | GlobeLayerBuilder;
+  nightLights: boolean | GlobeLayerBuilder;
   continents: Continent[] | null;
   _loaded: boolean;
 }
@@ -110,8 +110,8 @@ export class MapCatalog {
       landColor: def.landColor ?? LAND_COLOR,
       atmosphereColor: def.atmosphereColor ?? '#73b3ff',
       atmosphereStrength: def.atmosphereStrength ?? 1,
-      clouds: !!def.clouds,
-      nightLights: !!def.nightLights,
+      clouds: def.clouds ?? false,
+      nightLights: def.nightLights ?? false,
       continents: def.continents ?? null,
       _loaded: !!def.continents,
     });
@@ -159,8 +159,8 @@ export class MapCatalog {
       landColor: map.landColor!,
       atmosphereColor: map.atmosphereColor!,
       atmosphereStrength: map.atmosphereStrength!,
-      clouds: !!map.clouds,
-      nightLights: !!map.nightLights,
+      clouds: map.clouds ?? false,
+      nightLights: map.nightLights ?? false,
       label: map.name,
     };
   }

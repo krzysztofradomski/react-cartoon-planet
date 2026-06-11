@@ -13,6 +13,9 @@ export type {
   GlobeRenderConfig,
   GlobeAutoRotateOptions,
   GlobeFlyOptions,
+  GlobeLayerBuilder,
+  GlobeLayerContext,
+  GlobeLayerUpdateContext,
   GlobeRenderModeDefinition,
   GlobeRotateOptions,
   GlobeRuntimeRef,
@@ -28,6 +31,8 @@ export type {
 } from './CartoonPlanet';
 export { START_VIEWS } from './globeController';
 export { DEFAULT_MARKERS, WARSAW_LANDMARK_MARKERS } from './types';
+// Built-in sky-layer builders — reusable / wrappable in custom GlobeLayerBuilders.
+export { buildCloudLayer, buildCityLights, buildTerminator } from './engine/builders/dayNight';
 export {
   BUILTIN_MAPS,
   EARTH_MAP,

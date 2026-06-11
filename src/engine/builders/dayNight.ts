@@ -53,14 +53,20 @@ export function buildTerminator(sunDir: THREE.Vector3) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.renderOrder = TERMINATOR_RENDER_ORDER;
   mesh.userData.isTerminator = true;
+  // Same per-frame contract as custom GlobeLayerBuilder layers: fade out on
+  // approach to ground level so the shadow never obstructs the close-up view.
+  mesh.userData.update = ({ alt }) => {
+    mat.uniforms.uOpacity.value = THREE.MathUtils.clamp(alt / 900_000, 0, 1) * 0.78;
+  };
   return mesh;
 }
 
 /**
- * Warm point lights scattered over land, visible only on the night side.
- * Land is sampled from the continent polygons via an offscreen mask canvas.
+ * Built-in `nightLights` layer (a GlobeLayerBuilder): warm point lights
+ * scattered over land, visible only on the night side. Land is sampled from
+ * the continent polygons via an offscreen mask canvas.
  */
-export function buildCityLights(continents = [], pixelRatio = 1) {
+export function buildCityLights({ continents = [], pixelRatio = 1, sunDir }) {
   const width = 1024;
   const height = 512;
   const canvas = buildMapCanvas(continents, {
@@ -108,7 +114,7 @@ export function buildCityLights(continents = [], pixelRatio = 1) {
     blending: THREE.AdditiveBlending,
     vertexColors: true,
     uniforms: {
-      uSunDir: { value: new THREE.Vector3(1, 0, 0) },
+      uSunDir: { value: sunDir ?? new THREE.Vector3(1, 0, 0) },
       uOpacity: { value: 0 },
       uPixelRatio: { value: pixelRatio },
     },
@@ -147,6 +153,9 @@ export function buildCityLights(continents = [], pixelRatio = 1) {
   const points = new THREE.Points(geo, mat);
   points.renderOrder = CITY_LIGHTS_RENDER_ORDER;
   points.userData.isCityLights = true;
+  points.userData.update = ({ alt }) => {
+    mat.uniforms.uOpacity.value = THREE.MathUtils.clamp(alt / 400_000, 0, 1);
+  };
   return points;
 }
 
@@ -189,7 +198,10 @@ function buildCloudCanvas() {
   return canvas;
 }
 
-/** Slowly drifting translucent cloud sphere just above the surface. */
+/**
+ * Built-in `clouds` layer (a GlobeLayerBuilder): slowly drifting translucent
+ * procedural cloud sphere just above the surface.
+ */
 export function buildCloudLayer() {
   const texture = new THREE.CanvasTexture(buildCloudCanvas());
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -205,5 +217,9 @@ export function buildCloudLayer() {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.renderOrder = CLOUDS_RENDER_ORDER;
   mesh.userData.isCloudLayer = true;
+  mesh.userData.update = ({ alt }) => {
+    mesh.rotation.y += 0.00016;
+    mat.opacity = THREE.MathUtils.clamp((alt - 60_000) / 700_000, 0, 0.85);
+  };
   return mesh;
 }

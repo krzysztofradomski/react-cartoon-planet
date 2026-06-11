@@ -31,6 +31,7 @@ const _placeHit = new THREE.Vector3();
 const _mapAtmoColor = new THREE.Color();
 const _drawingBufferSize = new THREE.Vector2();
 const _raycaster = new THREE.Raycaster();
+const _layerUpdateCtx = { alt: 0, time: 0, sunDir: null };
 
 function disposeObject3D(child) {
   child.traverse((o) => {
@@ -299,7 +300,8 @@ export function attachGlobeScene({
   const dayNightGroup = new THREE.Group();
   dayNightGroup.userData.kind = 'day-night';
   planet.add(dayNightGroup);
-  let cloudLayer = null; // cached — map-independent, expensive canvas
+  let builtinClouds = null; // cached — map-independent, expensive canvas
+  let cloudLayer = null;
   let terminator = null;
   let cityLights = null;
   let dayNightKey = '';
@@ -308,41 +310,60 @@ export function attachGlobeScene({
   let dayNightEnabled = dayNight !== false;
   let cloudsEnabled = clouds !== false;
 
+  // Maps can replace a built-in layer with their own GlobeLayerBuilder by
+  // passing a function instead of `true` for clouds / nightLights.
+  function layerFlagKind(flag) {
+    return typeof flag === 'function' ? 'custom' : flag ? 'builtin' : 'off';
+  }
+
+  function removeLayer(layer) {
+    if (!layer) return null;
+    dayNightGroup.remove(layer);
+    if (layer !== builtinClouds) disposeObject3D(layer);
+    return null;
+  }
+
   function rebuildDayNight() {
     const modeObj = renderCatalog.get(currentRenderModeName());
     const modeSupportsDayNight = !!modeObj?.getDayNight?.();
     const dayNightOn = dayNightEnabled && modeSupportsDayNight;
     const mapOpts = getMapOptions();
-    const wantClouds = cloudsEnabled && modeSupportsDayNight && !!mapOpts.clouds;
-    const wantLights = dayNightOn && !!mapOpts.nightLights;
+    const cloudsFlag = cloudsEnabled && modeSupportsDayNight ? mapOpts.clouds : false;
+    const lightsFlag = dayNightOn ? mapOpts.nightLights : false;
     const continents = mapCatalog.getContinents();
-    const nextKey = `${dayNightOn}:${wantClouds}:${wantLights}:${mapCatalog.getActiveName()}:${continents.length}`;
+    const nextKey =
+      `${dayNightOn}:${layerFlagKind(cloudsFlag)}:${layerFlagKind(lightsFlag)}` +
+      `:${mapCatalog.getActiveName()}:${continents.length}`;
     if (nextKey === dayNightKey) return;
     dayNightKey = nextKey;
 
-    if (terminator) {
-      dayNightGroup.remove(terminator);
-      disposeObject3D(terminator);
-      terminator = null;
-    }
-    if (cityLights) {
-      dayNightGroup.remove(cityLights);
-      disposeObject3D(cityLights);
-      cityLights = null;
-    }
-    if (cloudLayer) cloudLayer.visible = wantClouds;
+    terminator = removeLayer(terminator);
+    cityLights = removeLayer(cityLights);
+    cloudLayer = removeLayer(cloudLayer);
+
+    const layerContext = {
+      map: { ...mapOpts, name: mapCatalog.getActiveName() },
+      continents,
+      pixelRatio: renderer.getPixelRatio(),
+      sunDir,
+    };
 
     if (dayNightOn) {
       terminator = buildTerminator(sunDir);
       dayNightGroup.add(terminator);
     }
-    if (wantLights) {
-      cityLights = buildCityLights(continents, renderer.getPixelRatio());
-      cityLights.material.uniforms.uSunDir.value = sunDir;
+    if (lightsFlag) {
+      cityLights =
+        typeof lightsFlag === 'function' ? lightsFlag(layerContext) : buildCityLights(layerContext);
       dayNightGroup.add(cityLights);
     }
-    if (wantClouds && !cloudLayer) {
-      cloudLayer = buildCloudLayer();
+    if (cloudsFlag) {
+      if (typeof cloudsFlag === 'function') {
+        cloudLayer = cloudsFlag(layerContext);
+      } else {
+        if (!builtinClouds) builtinClouds = buildCloudLayer();
+        cloudLayer = builtinClouds;
+      }
       dayNightGroup.add(cloudLayer);
     }
   }
@@ -625,20 +646,16 @@ export function attachGlobeScene({
       atmoRimMat.uniforms.uColor.value.copy(atmoMat.uniforms.uColor.value);
 
       // Day/night: precess the sun slowly (full cycle ≈ 3.5 min) so the
-      // terminator and city lights drift across the globe. Layers fade out on
-      // approach to ground level so they never obstruct the close-up view.
-      const sunAngle = performance.now() * 0.00003;
+      // terminator and city lights drift across the globe, then let each layer
+      // (built-in or custom GlobeLayerBuilder) run its per-frame update hook.
+      const layerTime = performance.now();
+      const sunAngle = layerTime * 0.00003;
       sunDir.set(Math.cos(sunAngle), 0.3, Math.sin(sunAngle)).normalize();
-      if (terminator) {
-        terminator.material.uniforms.uOpacity.value =
-          THREE.MathUtils.clamp(alt / 900_000, 0, 1) * 0.78;
-      }
-      if (cityLights) {
-        cityLights.material.uniforms.uOpacity.value = THREE.MathUtils.clamp(alt / 400_000, 0, 1);
-      }
-      if (cloudLayer && cloudLayer.visible) {
-        cloudLayer.rotation.y += 0.00016;
-        cloudLayer.material.opacity = THREE.MathUtils.clamp((alt - 60_000) / 700_000, 0, 0.85);
+      _layerUpdateCtx.alt = alt;
+      _layerUpdateCtx.time = layerTime;
+      _layerUpdateCtx.sunDir = sunDir;
+      for (const layer of dayNightGroup.children) {
+        if (layer.visible) layer.userData.update?.(_layerUpdateCtx);
       }
 
       renderCatalog.animate(currentMode, surfaceGroup, { alt, time: performance.now() });

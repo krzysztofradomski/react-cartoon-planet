@@ -24,15 +24,71 @@ import {
 import type {
   CartoonPlanetController,
   CartoonPlanetInitialState,
+  GlobeLayerBuilder,
   GlobeRenderModeDefinition,
   GlobeState,
   Marker,
   PlanetMapDefinition,
 } from "react-cartoon-planet";
-import { DEFAULT_MARKERS, WARSAW_LANDMARK_MARKERS } from "react-cartoon-planet";
+import {
+  DEFAULT_MARKERS,
+  THREE,
+  WARSAW_LANDMARK_MARKERS,
+} from "react-cartoon-planet";
 import { playIntro } from "./playIntro";
 
-const DEMO_MAPS: PlanetMapDefinition[] = [EARTH_MAP, MOON_MAP];
+// Custom cloud generator (GlobeLayerBuilder) for the Vapor map: neon streak
+// bands instead of the library's built-in puffy clouds. Build from the
+// package's re-exported THREE; `userData.update` runs every frame.
+const buildVaporClouds: GlobeLayerBuilder = () => {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d")!;
+  for (let i = 0; i < 110; i++) {
+    const x = Math.random() * 1024;
+    const y = 80 + Math.random() * 352;
+    const w = 60 + Math.random() * 220;
+    const h = 3 + Math.random() * 9;
+    const tint = `255, ${170 + Math.floor(Math.random() * 70)}, 252`;
+    const grad = ctx.createLinearGradient(x - w, y, x + w, y);
+    grad.addColorStop(0, `rgba(${tint}, 0)`);
+    grad.addColorStop(0.5, `rgba(${tint}, ${0.12 + Math.random() * 0.14})`);
+    grad.addColorStop(1, `rgba(${tint}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(x, y, w, h, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1.02, 64, 48), material);
+  mesh.renderOrder = 3;
+  mesh.userData.update = ({ alt }: { alt: number }) => {
+    mesh.rotation.y -= 0.0004; // drift against the planet's spin
+    material.opacity = THREE.MathUtils.clamp((alt - 60_000) / 700_000, 0, 0.9);
+  };
+  return mesh;
+};
+
+const VAPOR_MAP: PlanetMapDefinition = {
+  name: "Vapor",
+  url: EARTH_MAP.url,
+  oceanColor: "#7c4fd4",
+  landColor: "#2ee6a8",
+  atmosphereColor: "#ff7ad9",
+  atmosphereStrength: 1.1,
+  clouds: buildVaporClouds,
+  nightLights: true,
+};
+
+const DEMO_MAPS: PlanetMapDefinition[] = [EARTH_MAP, MOON_MAP, VAPOR_MAP];
 const DEMO_RENDER_MODES: GlobeRenderModeDefinition[] = BUILTIN_RENDER_MODES;
 
 const DEMO_MARKERS: Marker[] = [...DEFAULT_MARKERS, ...WARSAW_LANDMARK_MARKERS];

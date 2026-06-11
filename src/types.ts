@@ -3,6 +3,34 @@ import type { Group, Scene, PerspectiveCamera, WebGLRenderer } from 'three';
 export type StartViewId = 'globe' | 'ground';
 export type MarkerShape = 'orb' | 'cube' | 'bar' | 'icon' | 'cluster';
 
+/** Per-frame context passed to a layer's `userData.update` hook. */
+export interface GlobeLayerUpdateContext {
+  /** Camera altitude above the surface, in meters. */
+  alt: number;
+  /** `performance.now()` timestamp. */
+  time: number;
+  /** Shared sun direction (unit vector, world space); drives the day/night cycle. */
+  sunDir: import('three').Vector3;
+}
+
+/** Build-time context passed to a {@link GlobeLayerBuilder}. */
+export interface GlobeLayerContext {
+  map: PlanetMapOptions & { name: string };
+  continents: Continent[];
+  pixelRatio: number;
+  /** Shared sun direction; mutated in place every frame, safe to close over. */
+  sunDir: import('three').Vector3;
+}
+
+/**
+ * Custom sky-layer factory (clouds, city lights, …) — the layer counterpart of
+ * a render mode's `renderFunction`. Return an Object3D built from the
+ * package's re-exported `THREE` (unit sphere: surface ≈ radius 1.0). Attach
+ * `userData.update = (ctx: GlobeLayerUpdateContext) => void` for per-frame
+ * animation. The returned object is disposed when the map or mode changes.
+ */
+export type GlobeLayerBuilder = (context: GlobeLayerContext) => import('three').Object3D;
+
 /** GeoJSON or other map source referenced by local or remote URL. */
 export interface PlanetMapDefinition {
   name: string;
@@ -13,10 +41,17 @@ export interface PlanetMapDefinition {
   landColor?: string;
   atmosphereColor?: string;
   atmosphereStrength?: number;
-  /** Animated procedural cloud layer (shown when the render mode supports day/night). */
-  clouds?: boolean;
-  /** Warm city lights on the night side (shown when the render mode supports day/night). */
-  nightLights?: boolean;
+  /**
+   * Cloud layer (shown when the render mode supports day/night): `true` for
+   * the built-in drifting procedural clouds, or a {@link GlobeLayerBuilder}
+   * to plug in your own generator.
+   */
+  clouds?: boolean | GlobeLayerBuilder;
+  /**
+   * Night-side city lights (shown when the render mode supports day/night):
+   * `true` for the built-in warm land lights, or a {@link GlobeLayerBuilder}.
+   */
+  nightLights?: boolean | GlobeLayerBuilder;
 }
 
 /** Passed to custom renderFunction implementations. */
@@ -309,8 +344,8 @@ export interface PlanetMapOptions {
   landColor: string;
   atmosphereColor: string;
   atmosphereStrength: number;
-  clouds?: boolean;
-  nightLights?: boolean;
+  clouds?: boolean | GlobeLayerBuilder;
+  nightLights?: boolean | GlobeLayerBuilder;
   label?: string;
 }
 

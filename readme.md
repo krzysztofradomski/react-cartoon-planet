@@ -156,6 +156,32 @@ Like `bloom`, both are runtime-toggleable props (no scene rebuild — flip them 
 
 Both default to `true`; the mode's `getDayNight()` and the map's `clouds` / `nightLights` flags still decide what each toggle can show.
 
+### Plug in your own layer generators
+
+`clouds` and `nightLights` are composable the same way render modes are: pass a **`GlobeLayerBuilder`** function instead of `true` and the globe uses your layer in place of the built-in one. The builder receives `{ map, continents, pixelRatio, sunDir }` and returns a Three.js `Object3D` (unit sphere — surface ≈ radius `1.0`, built-in clouds sit at `1.018`). Attach `userData.update = ({ alt, time, sunDir }) => …` for per-frame animation; the object is disposed automatically when the map or mode changes.
+
+```tsx
+import { THREE, buildCloudLayer } from "react-cartoon-planet";
+import type { GlobeLayerBuilder, PlanetMapDefinition } from "react-cartoon-planet";
+
+const myClouds: GlobeLayerBuilder = ({ sunDir }) => {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1.02, 64, 48),
+    new THREE.MeshBasicMaterial({ map: myCloudTexture(), transparent: true, depthWrite: false }),
+  );
+  mesh.renderOrder = 3; // clouds slot: above the surface, below the terminator
+  mesh.userData.update = ({ alt }) => {
+    mesh.rotation.y += 0.0002;
+    mesh.material.opacity = THREE.MathUtils.clamp((alt - 60_000) / 700_000, 0, 0.9);
+  };
+  return mesh;
+};
+
+const MY_MAP: PlanetMapDefinition = { ...EARTH_MAP, name: "Mine", clouds: myClouds };
+```
+
+The built-in builders (`buildCloudLayer`, `buildCityLights`, `buildTerminator`) are exported too, so you can wrap or extend them. The demo's **Vapor** map plugs in a custom neon streak-cloud generator this way. (The atmosphere halo and starfield aren't pluggable yet — drop replacements into the scene via `onSceneReady` if you need to restyle those.)
+
 ## Bloom
 
 Pass the `bloom` prop for an `UnrealBloomPass` post-processing glow — neon-heavy modes like Cyber pop hard:
