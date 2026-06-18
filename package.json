@@ -44,9 +44,6 @@
   "engines": {
     "node": ">=20"
   },
-  "publishConfig": {
-    "provenance": true
-  },
   "keywords": [
     "react",
     "globe",
