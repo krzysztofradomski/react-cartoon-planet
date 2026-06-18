@@ -1,6 +1,6 @@
 {
   "name": "react-cartoon-planet",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Animated cartoon globe for React — zoom from orbit to ground level",
   "type": "module",
   "main": "./dist/index.js",
