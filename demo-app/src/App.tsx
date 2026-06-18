@@ -37,31 +37,76 @@ import {
 } from "react-cartoon-planet";
 import { playIntro } from "./playIntro";
 
-// Custom cloud generator (GlobeLayerBuilder) for the Vapor map: neon streak
-// bands instead of the library's built-in puffy clouds. Build from the
-// package's re-exported THREE; `userData.update` runs every frame.
+// Custom cloud generator (GlobeLayerBuilder) for the Vapor map: soft puffy
+// neon cloud systems (vaporwave palette) with a few wispy streak accents,
+// rather than the library's white built-in clouds. Build from the package's
+// re-exported THREE; `userData.update` runs every frame.
+const VAPOR_CLOUD_TINTS = [
+  "255, 122, 217", // hot pink
+  "176, 130, 255", // lavender
+  "120, 230, 255", // cyan
+  "255, 180, 246", // pale magenta
+];
+
 const buildVaporClouds: GlobeLayerBuilder = () => {
+  const width = 1024;
+  const height = 512;
   const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 512;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d")!;
-  for (let i = 0; i < 110; i++) {
-    const x = Math.random() * 1024;
+
+  // Puffy cloud systems: each is a cluster of soft radial puffs, biased away
+  // from the poles and stretched along latitude so they read as weather bands.
+  // Alpha is kept high enough that the clouds read on their own, without
+  // leaning on the bloom pass to make them visible.
+  const SYSTEMS = 110;
+  for (let s = 0; s < SYSTEMS; s++) {
+    const cx = Math.random() * width;
+    const band = (Math.random() - 0.5) * 2; // -1..1
+    const cy = height * (0.5 + band * 0.36);
+    const tint = VAPOR_CLOUD_TINTS[(Math.random() * VAPOR_CLOUD_TINTS.length) | 0];
+    const puffs = 5 + ((Math.random() * 8) | 0);
+    for (let p = 0; p < puffs; p++) {
+      const px = cx + (Math.random() - 0.5) * 150;
+      const py = cy + (Math.random() - 0.5) * 40;
+      const r = 12 + Math.random() * 36;
+      const alpha = 0.3 + Math.random() * 0.35;
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
+      grad.addColorStop(0, `rgba(${tint}, ${alpha})`);
+      grad.addColorStop(0.6, `rgba(${tint}, ${alpha * 0.55})`);
+      grad.addColorStop(1, `rgba(${tint}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(2.1, 1); // stretch into latitude bands
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // A handful of thin streak accents on top, for the lingering vapor-trail look.
+  for (let i = 0; i < 30; i++) {
+    const x = Math.random() * width;
     const y = 80 + Math.random() * 352;
     const w = 60 + Math.random() * 220;
     const h = 3 + Math.random() * 9;
-    const tint = `255, ${170 + Math.floor(Math.random() * 70)}, 252`;
+    const tint = VAPOR_CLOUD_TINTS[(Math.random() * VAPOR_CLOUD_TINTS.length) | 0];
     const grad = ctx.createLinearGradient(x - w, y, x + w, y);
     grad.addColorStop(0, `rgba(${tint}, 0)`);
-    grad.addColorStop(0.5, `rgba(${tint}, ${0.12 + Math.random() * 0.14})`);
+    grad.addColorStop(0.5, `rgba(${tint}, ${0.22 + Math.random() * 0.2})`);
     grad.addColorStop(1, `rgba(${tint}, 0)`);
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.ellipse(x, y, w, h, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping; // seamless drift across the seam
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
@@ -120,9 +165,9 @@ function App() {
     () => !prefersCompactDemoChrome(),
   );
   const [showGlobeControls, setShowGlobeControls] = useState(true);
-  const [bloomOn, setBloomOn] = useState(true);
-  const [dayNightOn, setDayNightOn] = useState(true);
-  const [cloudsOn, setCloudsOn] = useState(true);
+  const [bloomOn, setBloomOn] = useState(false);
+  const [dayNightOn, setDayNightOn] = useState(false);
+  const [cloudsOn, setCloudsOn] = useState(false);
   const [clickedMarker, setClickedMarker] = useState<Marker | null>(null);
 
   const maps = useMemo(() => DEMO_MAPS, []);

@@ -169,7 +169,9 @@ function buildCloudCanvas() {
   ctx.clearRect(0, 0, width, height);
 
   // Soft puff clusters, biased away from the poles and stretched along
-  // latitude so they read as weather bands rather than confetti.
+  // latitude so they read as weather bands rather than confetti. Alpha is
+  // high enough that the clouds read on the lit globe on their own, rather
+  // than relying on the optional bloom pass to amplify them.
   const SYSTEMS = 150;
   for (let s = 0; s < SYSTEMS; s++) {
     const cx = hash(s * 1.7, s * 0.3) * width;
@@ -180,10 +182,10 @@ function buildCloudCanvas() {
       const px = cx + (hash(s * 5.1, p * 2.3) - 0.5) * 130;
       const py = cy + (hash(p * 4.7, s * 1.9) - 0.5) * 34;
       const r = 9 + hash(s * 0.7, p * 6.1) * 30;
-      const alpha = 0.05 + hash(p * 1.3, s * 2.1) * 0.1;
+      const alpha = 0.28 + hash(p * 1.3, s * 2.1) * 0.32;
       const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
       grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
-      grad.addColorStop(0.7, `rgba(255,255,255,${alpha * 0.5})`);
+      grad.addColorStop(0.6, `rgba(255,255,255,${alpha * 0.55})`);
       grad.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = grad;
       ctx.save();
