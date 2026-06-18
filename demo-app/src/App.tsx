@@ -165,9 +165,9 @@ function App() {
     () => !prefersCompactDemoChrome(),
   );
   const [showGlobeControls, setShowGlobeControls] = useState(true);
-  const [bloomOn, setBloomOn] = useState(true);
-  const [dayNightOn, setDayNightOn] = useState(true);
-  const [cloudsOn, setCloudsOn] = useState(true);
+  const [bloomOn, setBloomOn] = useState(false);
+  const [dayNightOn, setDayNightOn] = useState(false);
+  const [cloudsOn, setCloudsOn] = useState(false);
   const [clickedMarker, setClickedMarker] = useState<Marker | null>(null);
 
   const maps = useMemo(() => DEMO_MAPS, []);
