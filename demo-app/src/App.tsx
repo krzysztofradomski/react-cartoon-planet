@@ -58,21 +58,23 @@ const buildVaporClouds: GlobeLayerBuilder = () => {
 
   // Puffy cloud systems: each is a cluster of soft radial puffs, biased away
   // from the poles and stretched along latitude so they read as weather bands.
-  const SYSTEMS = 90;
+  // Alpha is kept high enough that the clouds read on their own, without
+  // leaning on the bloom pass to make them visible.
+  const SYSTEMS = 110;
   for (let s = 0; s < SYSTEMS; s++) {
     const cx = Math.random() * width;
     const band = (Math.random() - 0.5) * 2; // -1..1
     const cy = height * (0.5 + band * 0.36);
     const tint = VAPOR_CLOUD_TINTS[(Math.random() * VAPOR_CLOUD_TINTS.length) | 0];
-    const puffs = 4 + ((Math.random() * 7) | 0);
+    const puffs = 5 + ((Math.random() * 8) | 0);
     for (let p = 0; p < puffs; p++) {
       const px = cx + (Math.random() - 0.5) * 150;
       const py = cy + (Math.random() - 0.5) * 40;
-      const r = 10 + Math.random() * 34;
-      const alpha = 0.06 + Math.random() * 0.12;
+      const r = 12 + Math.random() * 36;
+      const alpha = 0.3 + Math.random() * 0.35;
       const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
       grad.addColorStop(0, `rgba(${tint}, ${alpha})`);
-      grad.addColorStop(0.65, `rgba(${tint}, ${alpha * 0.5})`);
+      grad.addColorStop(0.6, `rgba(${tint}, ${alpha * 0.55})`);
       grad.addColorStop(1, `rgba(${tint}, 0)`);
       ctx.fillStyle = grad;
       ctx.save();
@@ -94,7 +96,7 @@ const buildVaporClouds: GlobeLayerBuilder = () => {
     const tint = VAPOR_CLOUD_TINTS[(Math.random() * VAPOR_CLOUD_TINTS.length) | 0];
     const grad = ctx.createLinearGradient(x - w, y, x + w, y);
     grad.addColorStop(0, `rgba(${tint}, 0)`);
-    grad.addColorStop(0.5, `rgba(${tint}, ${0.1 + Math.random() * 0.12})`);
+    grad.addColorStop(0.5, `rgba(${tint}, ${0.22 + Math.random() * 0.2})`);
     grad.addColorStop(1, `rgba(${tint}, 0)`);
     ctx.fillStyle = grad;
     ctx.beginPath();
