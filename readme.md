@@ -20,6 +20,8 @@ pnpm add react-cartoon-planet three
 
 `three` is a **peer** so your app and the globe share one Three.js instance — that's what makes `controller.getThree()` objects, `instanceof` checks, and the re-exported `THREE` all line up. Construct your own meshes from the package's re-exported `THREE` (see [Direct Three.js access](#direct-threejs-access)).
 
+> **React Native / Expo?** The optional `react-cartoon-planet/native` entry point renders through `expo-gl` instead of a DOM canvas and adds `react-native` + `expo-gl` as (optional) peers — see [React Native / Expo](#react-native--expo).
+
 **Dependencies** (installed automatically with the package):
 
 - [`earcut`](https://github.com/mapbox/earcut) — polygon triangulation for continent geometry
@@ -120,6 +122,72 @@ export function GlobeDemo() {
 ```
 
 Give the canvas room to breathe — the globe fills its container (`width` / `height: 100%` on a sized parent works well) and tracks container resizes automatically via `ResizeObserver`, so collapsing surrounding panels never leaves the canvas stretched.
+
+### Starting camera (`initialCamera`)
+
+`startView` snaps the camera to a named preset (`"globe"` / `"ground"`) on first mount. To open on an exact spot instead — e.g. the user's current location, or a region rather than the default globe view — pass `initialCamera` in `initialState`. It overrides `startView` for the **initial framing only**; later `flyTo` / `setStartView` calls work as usual.
+
+```tsx
+<CartoonPlanet
+  initialState={{
+    map: EARTH_MAP,
+    renderMode: SURFACE_RENDER_MODE,
+    initialCamera: { lng: 15, lat: 50, alt_m: 6_000_000 }, // open centred on Europe
+  }}
+/>
+```
+
+## React Native / Expo
+
+The globe also runs on React Native through a dedicated entry point that renders into an [`expo-gl`](https://docs.expo.dev/versions/latest/sdk/gl-view/) context instead of a DOM canvas. The scene engine, markers, render modes, `initialCamera`, and the full controller API are identical — only the host view and input wiring differ.
+
+```bash
+npx expo install expo-gl
+# plus a gesture source for pan/zoom/tap, e.g. react-native-gesture-handler
+```
+
+Native adds `react-native` and `expo-gl` as optional peers alongside `three`.
+
+```tsx
+import { PixelRatio, View } from "react-native";
+import * as THREE from "three";
+import {
+  CartoonPlanetNative,
+  EARTH_MAP,
+  type CartoonPlanetController,
+  type GlobeInteractionTarget,
+} from "react-cartoon-planet/native";
+
+// You build the renderer so the Expo GL context + canvas shim stay under your control.
+const createGlRenderer = (gl, width, height) =>
+  new THREE.WebGLRenderer({ context: gl, antialias: true /* + a canvas shim */ });
+
+<CartoonPlanetNative
+  createGlRenderer={createGlRenderer}
+  pixelRatio={Math.min(PixelRatio.get(), 2)}
+  maps={[EARTH_MAP]}
+  initialState={{
+    map: EARTH_MAP,
+    initialCamera: { lng: 15, lat: 50, alt_m: 6_000_000 },
+  }}
+  onReady={(c: CartoonPlanetController) => {
+    /* same controller API: flyTo, setMarkers, … */
+  }}
+  onInteractionReady={(target: GlobeInteractionTarget) => {
+    // RN has no DOM pointer events — forward your gesture handler's events:
+    // target.dispatch({ type: "pointerdown", clientX, clientY, pointerId: 1 })
+    // types: "pointerdown" | "pointermove" | "pointerup" | "wheel" | "click"
+  }}
+/>;
+```
+
+How native differs from the web `<CartoonPlanet>`:
+
+- **`createGlRenderer(gl, width, height)`** (required) — you construct the `THREE.WebGLRenderer` against the Expo GL context, keeping the canvas shim and pixel ratio yours.
+- **`onInteractionReady(target)`** — pan / zoom / tap are dispatched manually via `target.dispatch(...)`; wire it to your gesture library.
+- **No composable UI children / `ui` prop** — HUD and sidebar panels are web-only. Lay native controls out as ordinary RN views over the globe.
+- **`dayNight`, `clouds`, `bloom` default to `false`** on native (they default to `true` on web), so the base globe stays cheap on mobile GPUs.
+- The default render mode is **`SURFACE_NATIVE_RENDER_MODE`** — a lighter solid mode tuned for mobile — which is also exported for explicit use.
 
 ## Render modes
 
@@ -341,7 +409,7 @@ The render loop is persistent — anything you add draws every frame. The globe 
 | --------------------- | ---------------------------------------- | ---------------------------------------------- |
 | `maps`                | `PlanetMapDefinition[]`                  | Defaults to Earth + Moon                       |
 | `renderModes`         | `GlobeRenderModeDefinition[]`            | Defaults to all four built-ins                 |
-| `initialState`        | `CartoonPlanetInitialState`              | Map, mode, start view, markers                 |
+| `initialState`        | `CartoonPlanetInitialState`              | Map, mode, start view / `initialCamera`, markers |
 | `bloom`               | `boolean \| CartoonPlanetBloomOptions`   | Post-processing glow; runtime-toggleable       |
 | `dayNight`            | `boolean`                                | Terminator + city lights; runtime-toggleable   |
 | `clouds`              | `boolean`                                | Cloud layer; runtime-toggleable                |
