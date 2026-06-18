@@ -19,6 +19,10 @@ import { EARTH_RADIUS_M, START_VIEWS, GlobeController } from '../../globeControl
 import type { StartViewId } from '../../types';
 import { formatAltitude, formatScaleBar } from '../../components/globeUi/hudFormat';
 import { bindEnginePort, clearEnginePort, type GlobeEnginePortRef } from '../globeEnginePort';
+import {
+  createDomViewport,
+  type GlobeViewport,
+} from '../../platform/viewport';
 
 const _vOrb1 = new THREE.Vector3();
 const _vOrb2 = new THREE.Vector3();
@@ -47,10 +51,12 @@ function disposeObject3D(child) {
 }
 
 export type AttachGlobeSceneOptions = {
-  mount: HTMLElement;
+  mount?: HTMLElement;
+  viewport?: GlobeViewport;
   enginePortRef: GlobeEnginePortRef;
   controller: GlobeController;
   startView: StartViewId;
+  initialCamera?: { lng: number; lat: number; alt_m: number };
   bloom?: boolean | { strength?: number; radius?: number; threshold?: number } | null;
   dayNight?: boolean;
   clouds?: boolean;
@@ -59,32 +65,53 @@ export type AttachGlobeSceneOptions = {
 
 export function attachGlobeScene({
   mount,
+  viewport: viewportInput,
   enginePortRef,
   controller,
   startView,
+  initialCamera,
   bloom,
   dayNight,
   clouds,
   onSceneReady,
 }: AttachGlobeSceneOptions): () => void {
-  const w = mount.clientWidth;
-  const h = mount.clientHeight;
+  const viewport = viewportInput ?? (mount ? createDomViewport(mount) : null);
+  if (!viewport) {
+    throw new Error('attachGlobeScene requires mount or viewport');
+  }
+
+  const initialSize = viewport.getSize();
+  const w = initialSize.width;
+  const h = initialSize.height;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#0a0e1a');
 
   const camera = new THREE.PerspectiveCamera(50, w / h, 0.001, 200);
 
-  const renderer = new THREE.WebGLRenderer({
-    alpha: false,
-    antialias: true,
-    preserveDrawingBuffer: true,
-    logarithmicDepthBuffer: true,
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(w, h);
-  renderer.setClearAlpha(1);
-  mount.appendChild(renderer.domElement);
+  const renderer = viewport.createRenderer();
+  const interactionTarget = viewport.getInteractionTarget();
+
+  function screenMetrics() {
+    const size = viewport.getSize();
+    return {
+      width: interactionTarget.clientWidth || size.width || w,
+      height: interactionTarget.clientHeight || size.height || h,
+    };
+  }
+
+  function interactionRect() {
+    if (typeof interactionTarget.getBoundingClientRect === 'function') {
+      return interactionTarget.getBoundingClientRect();
+    }
+    const metrics = screenMetrics();
+    return {
+      left: 0,
+      top: 0,
+      width: metrics.width,
+      height: metrics.height,
+    };
+  }
 
   const planet = new THREE.Group();
   const surfaceGroup = new THREE.Group();
@@ -130,7 +157,7 @@ export function attachGlobeScene({
   let controls;
 
   function getViewMetrics() {
-    const screenW = renderer.domElement.clientWidth || 800;
+    const screenW = screenMetrics().width || 800;
     if (controls) {
       const altM = (controls.radius - 1) * EARTH_RADIUS_M;
       return { altM, mpp: metersPerPixel(controls.radius, camera, screenW) };
@@ -390,10 +417,15 @@ export function attachGlobeScene({
   stars.material.uniforms.uPixelRatio.value = renderer.getPixelRatio();
   scene.add(stars);
 
-  const controlsInstance = new GlobeControls(camera, renderer.domElement);
+  const controlsInstance = new GlobeControls(camera, interactionTarget);
   controls = controlsInstance;
-  const initialView = START_VIEWS[startView] || START_VIEWS.globe;
-  controlsInstance.jumpTo(initialView.lng, initialView.lat, 1 + initialView.alt_m / EARTH_RADIUS_M);
+  const initialView =
+    initialCamera ?? START_VIEWS[startView] ?? START_VIEWS.globe;
+  controlsInstance.jumpTo(
+    initialView.lng,
+    initialView.lat,
+    1 + initialView.alt_m / EARTH_RADIUS_M,
+  );
 
   // Optional bloom post-processing, toggleable at runtime via the engine port.
   // The OutputPass keeps the composer path color-identical (sRGB) to the
@@ -418,8 +450,8 @@ export function attachGlobeScene({
       bloomPass.threshold = threshold;
       return;
     }
-    const cw = mount.clientWidth || w;
-    const ch = mount.clientHeight || h;
+    const cw = screenMetrics().width || w;
+    const ch = screenMetrics().height || h;
     composer = new EffectComposer(renderer);
     composer.setPixelRatio(renderer.getPixelRatio());
     composer.setSize(cw, ch);
@@ -494,7 +526,7 @@ export function attachGlobeScene({
     const markerGroup = markerRoot.userData.markerGroup;
     if (!markerGroup) return;
 
-    const rect = renderer.domElement.getBoundingClientRect();
+    const rect = interactionRect();
     const mouse = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
       -((e.clientY - rect.top) / rect.height) * 2 + 1
@@ -515,17 +547,19 @@ export function attachGlobeScene({
     for (const item of markerGroup.userData.items || []) {
       item.userData.hoverTarget = hoveredId != null && item.userData.marker === hovered ? 1 : 0;
     }
-    renderer.domElement.style.cursor = hovered ? 'pointer' : '';
+    if (renderer.domElement?.style) {
+      renderer.domElement.style.cursor = hovered ? 'pointer' : '';
+    }
 
     if (hoveredId !== hoveredMarkerId) {
       hoveredMarkerId = hoveredId;
       enginePortRef.current?.onMarkerHover?.(hovered);
     }
   }
-  renderer.domElement.addEventListener('pointermove', handlePointerMove);
+  interactionTarget.addEventListener('pointermove', handlePointerMove);
 
   function handleCanvasClick(e) {
-    const rect = renderer.domElement.getBoundingClientRect();
+    const rect = interactionRect();
     const mouse = new THREE.Vector2(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
       -((e.clientY - rect.top) / rect.height) * 2 + 1
@@ -559,23 +593,21 @@ export function attachGlobeScene({
       }
     }
   }
-  renderer.domElement.addEventListener('click', handleCanvasClick);
+  interactionTarget.addEventListener('click', handleCanvasClick);
 
   function onResize() {
-    const rw = mount.clientWidth;
-    const rh = mount.clientHeight;
+    const { width: rw, height: rh } = viewport.getSize();
     if (!rw || !rh) return;
     renderer.setSize(rw, rh);
     composer?.setSize(rw, rh);
     camera.aspect = rw / rh;
     camera.updateProjectionMatrix();
     syncOutlineResolution();
+    if (typeof interactionTarget.setSize === 'function') {
+      interactionTarget.setSize(rw, rh);
+    }
   }
-  window.addEventListener('resize', onResize);
-  // The mount can resize without a window resize (surrounding layout/panel
-  // changes); observe it directly so the canvas never renders stretched.
-  const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
-  resizeObserver?.observe(mount);
+  const unobserveResize = viewport.observeResize(onResize);
 
   const unsubscribeState = controller.subscribe((state) => {
     if (
@@ -611,7 +643,7 @@ export function attachGlobeScene({
       // Coastlines are screen-width vector lines now, so the surface no longer
       // needs regenerating as altitude changes.
 
-      const screenW = renderer.domElement.clientWidth || 800;
+      const screenW = screenMetrics().width || 800;
       const mpp = metersPerPixel(controlsInstance.radius, camera, screenW);
       const rawMarkers = controller.getState().markers;
       const nextMarkerKey = markerDisplayKey(rawMarkers, alt, mpp);
@@ -623,7 +655,7 @@ export function attachGlobeScene({
         markerRoot.userData.markerGroup,
         alt,
         camera,
-        renderer.domElement.clientHeight || 800
+        screenMetrics().height || 800
       );
 
       const dir = camera.position.clone().normalize();
@@ -750,10 +782,10 @@ export function attachGlobeScene({
         prevTickMarkerKey = lastMarkerDisplayKey;
 
         controller.updateMarkerLabels(
-          projectMarkerLabels(markerRoot.userData.markerGroup, camera, renderer.domElement)
+          projectMarkerLabels(markerRoot.userData.markerGroup, camera, interactionTarget)
         );
 
-        const scaleBarLabel = formatScaleBar(controlsInstance.radius, camera, renderer.domElement.clientWidth);
+        const scaleBarLabel = formatScaleBar(controlsInstance.radius, camera, screenMetrics().width);
         controller.updateHUD({
           altitude: alt,
           focusLat: lat,
@@ -769,6 +801,7 @@ export function attachGlobeScene({
       } else {
         renderer.render(scene, camera);
       }
+      viewport.endFrame?.();
     } catch (e) {
       console.error('tick error', e);
     }
@@ -778,15 +811,22 @@ export function attachGlobeScene({
 
   return () => {
     cancelAnimationFrame(raf);
-    window.removeEventListener('resize', onResize);
-    resizeObserver?.disconnect();
+    unobserveResize();
     unsubscribeMap();
     unsubscribeState();
-    renderer.domElement.removeEventListener('click', handleCanvasClick);
-    renderer.domElement.removeEventListener('pointermove', handlePointerMove);
+    interactionTarget.removeEventListener('click', handleCanvasClick);
+    interactionTarget.removeEventListener('pointermove', handlePointerMove);
     applyBloom(null);
-    renderer.dispose();
-    mount.removeChild(renderer.domElement);
+    if (viewport.disposeRenderer) {
+      viewport.disposeRenderer(renderer);
+    } else {
+      renderer.dispose();
+    }
+    if (mount) {
+      while (mount.firstChild) {
+        mount.removeChild(mount.firstChild);
+      }
+    }
     clearEnginePort(enginePortRef);
   };
 }

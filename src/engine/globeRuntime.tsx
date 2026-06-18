@@ -34,6 +34,7 @@ export function GlobeRuntime({
   bloom,
   dayNight,
   clouds,
+  initialCamera,
   onSceneReady,
   onMarkerClick,
   onMarkerHover,
@@ -46,6 +47,7 @@ export function GlobeRuntime({
   bloom?: boolean | CartoonPlanetBloomOptions;
   dayNight?: boolean;
   clouds?: boolean;
+  initialCamera?: { lng: number; lat: number; alt_m: number };
   onSceneReady?: (three: CartoonPlanetThree) => void;
   onMarkerClick?: (marker: Marker) => boolean | void;
   onMarkerHover?: (marker: Marker | null) => void;
@@ -58,6 +60,7 @@ export function GlobeRuntime({
   // subsequent setStartView() calls already invoke flyTo directly. onSceneReady
   // fires once after mount and is never re-invoked.
   const startViewRef = useRef(globeState.startView);
+  const initialCameraRef = useRef(initialCamera);
   const onSceneReadyRef = useRef(onSceneReady);
   const initialBloomRef = useRef(bloom);
   const initialDayNightRef = useRef(dayNight);
@@ -91,6 +94,7 @@ export function GlobeRuntime({
       enginePortRef,
       controller,
       startView: startViewRef.current,
+      initialCamera: initialCameraRef.current,
       bloom: initialBloomRef.current,
       dayNight: initialDayNightRef.current,
       clouds: initialCloudsRef.current,

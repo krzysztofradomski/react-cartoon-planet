@@ -166,6 +166,8 @@ export interface CartoonPlanetInitialState {
   map?: PlanetMapDefinition;
   renderMode?: GlobeRenderModeDefinition;
   startView?: StartViewId;
+  /** Initial camera position; overrides `startView` preset on first mount. */
+  initialCamera?: { lng: number; lat: number; alt_m: number };
   markers?: Marker[];
   linksEnabled?: boolean;
   fatOutlines?: boolean;

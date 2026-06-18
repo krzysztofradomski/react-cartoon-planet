@@ -5,7 +5,18 @@ import moonMariaUrl from '../assets/moon-maria.geojson?url';
 /** Resolve bundled asset paths relative to this module (not the page URL). */
 export function resolveBundledAssetUrl(assetPath: string): string {
   const cleanPath = assetPath.replace(/\?url$/, '');
-  return new URL(cleanPath, import.meta.url).href;
+  // Metro / Expo web bundles are not ES modules — `import.meta` crashes at runtime.
+  // Vite/webpack consumers get absolute URLs from ?url imports before this runs.
+  // RN/Expo apps should override `map.url` (see Critterboard CartoonPlanetGlobe).
+  if (
+    cleanPath.startsWith('http://') ||
+    cleanPath.startsWith('https://') ||
+    cleanPath.startsWith('file://') ||
+    cleanPath.startsWith('/')
+  ) {
+    return cleanPath;
+  }
+  return cleanPath;
 }
 
 export const EARTH_MAP: PlanetMapDefinition = {

@@ -7,6 +7,32 @@ import { buildContinentOutlines } from '../engine/builders/continentOutline';
 import { buildDotCloud, buildHybridArcs, buildCyberpunkArcs, buildCyberpunkRings } from '../engine/builders/dotCloud';
 import { R_OCEAN } from '../engine/constants/globeConstants';
 
+export const SURFACE_NATIVE_RENDER_MODE: GlobeRenderModeDefinition = {
+  name: 'Solid',
+  renderFunction(config: GlobeRenderConfig) {
+    const group = new THREE.Group();
+    const ocean = new THREE.Mesh(
+      new THREE.SphereGeometry(R_OCEAN, 96, 64),
+      new THREE.MeshBasicMaterial({ color: config.map.oceanColor }),
+    );
+    ocean.renderOrder = 0;
+    group.add(ocean);
+    group.add(
+      buildContinentOutlines(config.continents, {
+        color: '#0a0a14',
+        fat: config.fatOutline,
+      }),
+    );
+    return group;
+  },
+  getAtmosphereColor() {
+    return new THREE.Color(0.45, 0.7, 1.0);
+  },
+  getMarkerMode() {
+    return 'surface';
+  },
+};
+
 export const SURFACE_RENDER_MODE: GlobeRenderModeDefinition = {
   name: 'Solid',
   renderFunction(config: GlobeRenderConfig) {

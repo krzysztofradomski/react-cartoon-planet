@@ -1,6 +1,6 @@
 {
   "name": "react-cartoon-planet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Animated cartoon globe for React — zoom from orbit to ground level",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,7 +12,14 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./style.css": "./dist/index.css"
+    "./native": {
+      "types": "./dist/native/index.d.ts",
+      "import": "./dist/native/index.js",
+      "default": "./dist/native/index.js"
+    },
+    "./style.css": "./dist/index.css",
+    "./dist/earth-land-X6JGJZKC.geojson": "./dist/earth-land-X6JGJZKC.geojson",
+    "./dist/moon-maria-KSGL2J3L.geojson": "./dist/moon-maria-KSGL2J3L.geojson"
   },
   "files": [
     "dist"
@@ -56,6 +63,17 @@
     "react": ">=18 <20",
     "react-dom": ">=18 <20",
     "three": ">=0.160"
+  },
+  "peerDependenciesMeta": {
+    "react-dom": {
+      "optional": true
+    },
+    "expo-gl": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
   },
   "dependencies": {
     "earcut": "^2.2.4"
