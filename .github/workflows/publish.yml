@@ -1,0 +1,71 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      # No registry-url here — avoids writing an auth token into .npmrc before OIDC publish.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@11.5.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          TAG_VERSION="${RELEASE_TAG#v}"
+          PKG_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Release tag ${RELEASE_TAG} (version ${TAG_VERSION}) does not match package.json version ${PKG_VERSION}"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build for publish
+        run: pnpm clean && pnpm build
+
+      # Trusted publishing (OIDC): do NOT set NODE_AUTH_TOKEN or NPM_TOKEN secret.
+      # An invalid token in secrets overrides OIDC and causes npm 404 on publish.
+      - name: Configure registry for publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish to npm
+        run: npm publish --access public --ignore-scripts

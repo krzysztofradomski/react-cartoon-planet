@@ -17,17 +17,36 @@
   "files": [
     "dist"
   ],
+  "sideEffects": [
+    "**/*.css",
+    "**/*.geojson"
+  ],
   "scripts": {
+    "clean": "rm -rf dist",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "test:geo": "node --experimental-strip-types scripts/test-geo.ts",
     "test:markers": "node --experimental-strip-types scripts/test-markers.ts",
     "test": "npm run test:geo && npm run test:markers",
+    "test:int": "npm run test",
     "prepare": "npm run build"
   },
   "author": "hello@radomski.dev",
-  "homepage": "https://radomski.dev/react-cartoon-planet",
-  "repository": "https://github.com/radomski/react-cartoon-planet",
+  "homepage": "https://react-cartoon-planet.paperplane.builders/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krzysztofradomski/react-cartoon-planet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/krzysztofradomski/react-cartoon-planet/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
   "keywords": [
     "react",
     "globe",
