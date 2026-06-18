@@ -363,6 +363,7 @@ cd demo-app && pnpm install && pnpm dev
 
 ## Links
 
+- [NPM](https://www.npmjs.com/package/react-cartoon-planet)
 - [Live demo online](https://react-cartoon-planet.paperplane.builders)
 - [Repository](https://github.com/krzysztofradomski/react-cartoon-planet)
 - [Issues](https://github.com/krzysztofradomski/react-cartoon-planet/issues)
